@@ -151,17 +151,17 @@ class BiDAF(nn.module):
         self.mod_fc2 = nn.Linear(2*hidden_dim, 1)
         
     
-    def forward(self, text_c, text_q):
+    def forward(self, idx_c, idx_q):
         """
             text_c: [batch_size, context_len]
             text_q: [batch_size, question_len]  
             
         """ 
-        mask_c = torch.zeros_like(text_c) != text_c
-        mask_q = torch.zeros_like(text_q) != text_q
+        mask_c = torch.zeros_like(idx_c) != idx_c
+        mask_q = torch.zeros_like(idx_q) != idx_q
               
-        embed_c = self.embedding(text_c)  # [batch_size, c_len, embed_dim]
-        embed_q = self.embedding(text_q)  # [batch_size, q_len, embed_dim]
+        embed_c = self.embedding(idx_c)  # [batch_size, c_len, embed_dim]
+        embed_q = self.embedding(idx_q)  # [batch_size, q_len, embed_dim]
         
         embed_fc_c = self.embed_fc(embed_c)  # [batch_size, c_len, hidden_dim]
         embed_fc_q = self.embed_fc(embed_q)  # [batch_size, q_len, hidden_dim]
