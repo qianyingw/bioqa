@@ -12,8 +12,11 @@ import os
 nlp = spacy.load("en_core_web_sm")
 
 #%%
-def word_tokenizer(text):
-    tokens = [token.text for token in nlp(text)]
+def word_tokenizer(text, lower=True):
+    if lower:
+        tokens = [token.text.lower() for token in nlp(text)]
+    else:
+        tokens = [token.text for token in nlp(text)]
     return tokens
 
 def convert_idx(text, tokens):
@@ -31,20 +34,20 @@ def convert_idx(text, tokens):
     return spans
 
 
-def process_records(dat):
+def process_records(dat, lower):
     
     records = []
     count = 0
     for record in dat:
         # Context
         context = record['context'].replace("''", '" ').replace("``", '" ') # Replace non-standard quotation marks
-        context_tokens = word_tokenizer(context)
+        context_tokens = word_tokenizer(context, lower)
         # (token_start_char_idx, token_end_char_idx)     
         spans = convert_idx(context, context_tokens)
         
         # Question
         ques = record['question'].replace("''", '" ').replace("``", '" ')  
-        ques_tokens = word_tokenizer(ques)
+        ques_tokens = word_tokenizer(ques, lower)
         
         # Answers   
         y1s, y2s = [], []
@@ -80,9 +83,9 @@ json_dir = '/media/mynewdrive/bioqa/mnd'
 with open(os.path.join(json_dir, 'MND-Intervention-1983-06Aug20.json')) as fin:
     dat = json.load(fin)
 
-train_ls = process_records(dat['train'])
-valid_ls = process_records(dat['valid'])
-test_ls = process_records(dat['test'])
+train_ls = process_records(dat['train'], lower=False)
+valid_ls = process_records(dat['valid'], lower=False)
+test_ls = process_records(dat['test'], lower=False)
 
 with open(os.path.join(json_dir, 'train.json'), 'w') as fout:
     for l in train_ls:     
