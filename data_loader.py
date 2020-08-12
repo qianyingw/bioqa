@@ -101,7 +101,7 @@ class MNDIterators(object):
 #     'min_occur_freq': 0,
 #     'embed_path': '/media/mynewdrive/rob/wordvec/wikipedia-pubmed-and-PMC-w2v.txt',
 #     'data_dir': '/media/mynewdrive/bioqa/mnd'
-#    }             
+#     }             
 
 # MND = MNDIterators(args)
 # train_data, valid_data, test_data = MND.create_data()
@@ -125,13 +125,12 @@ class MNDIterators(object):
 # count = 0
 # for batch in valid_iter:    
 #     if count < 20:
-#         print(batch.context.shape)   # [context_len, batch_size]        
+#         print(batch.context.shape)   # [batch_size, context_len]        
 #     count += 1
-        
-    
+
 # count = 0
 # for batch in valid_iter:    
-#     if count < 3:
+#     if count < 8:
 #         print("=======================")
 #         print(batch.context.shape)   # [batch_size, context_len]
 #         print(batch.question.shape)  # [batch_size, question_len]
