@@ -69,10 +69,11 @@ def process_records(dat, lower):
                 y2s.append(y2)
         
         res_dict = {"context_tokens": context_tokens,
-                   "ques_tokens": ques_tokens,
-                   "y1s": y1s,
-                   "y2s": y2s,
-                   "id": count}
+                    "ques_tokens": ques_tokens,
+                    "answer": answers[0],
+                    "y1s": y1s,
+                    "y2s": y2s,
+                    "id": count}
         count += 1
         records.append(res_dict)
     
@@ -84,8 +85,19 @@ with open(os.path.join(json_dir, 'MND-Intervention-1983-06Aug20.json')) as fin:
     dat = json.load(fin)
 
 train_ls = process_records(dat['train'], lower=False)
+for i, ls in enumerate(train_ls):
+    train_ls[i]['id'] = 'train_' + str(train_ls[i]['id'])
+    
 valid_ls = process_records(dat['valid'], lower=False)
+for i, ls in enumerate(valid_ls):
+    valid_ls[i]['id'] = 'valid_' + str(valid_ls[i]['id'])
+    
 test_ls = process_records(dat['test'], lower=False)
+for i, ls in enumerate(test_ls):
+    test_ls[i]['id'] = 'test_' + str(test_ls[i]['id'])
+    
+    
+    
 
 with open(os.path.join(json_dir, 'train.json'), 'w') as fout:
     for l in train_ls:     
