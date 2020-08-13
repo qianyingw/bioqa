@@ -24,7 +24,7 @@ class MNDIterators(object):
 
         self.ID = data.RawField()
         self.TEXT = data.Field(batch_first=True)
-        self.POSITION = data.Field(batch_first=True)        
+        self.POSITION = data.RawField()     
         
 
     def create_data(self):
@@ -59,7 +59,7 @@ class MNDIterators(object):
     def build_vocabulary(self, train_data, valid_data, test_data):
         
         # self.ID.build_vocab(train_data)  # can't build vocab for RawField
-        self.POSITION.build_vocab(train_data)
+        # self.POSITION.build_vocab(train_data)
         
         self.TEXT.build_vocab(train_data, valid_data,
                               max_size = self.args['max_vocab_size'],
@@ -74,7 +74,7 @@ class MNDIterators(object):
         
         self.build_vocabulary(train_data, valid_data, test_data)
         
-        train_iterator = data.BucketIterator.splits(
+        train_iterator = data.BucketIterator(
             train_data,
             sort = True,
             sort_key = lambda x: len(x.context),
@@ -94,7 +94,7 @@ class MNDIterators(object):
         return train_iterator, valid_iterator, test_iterator
 
 
-#%% Instance
+# %% Instance
 # args = {
 #     'batch_size': 32,
 #     'max_vocab_size': 30000,
