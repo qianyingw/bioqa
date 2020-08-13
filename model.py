@@ -13,16 +13,15 @@ import torch.nn.functional as F
 from utils import masked_softmax
 
 #%%
-class Highway(nn.module):
+class Highway(nn.Module):
     
     def __init__(self, hidden_dim, num_layers):
         
-        super(Highway, self).__init__()
-        
+        super(Highway, self).__init__()       
         self.transform_fcs = nn.ModuleList([nn.Linear(hidden_dim, hidden_dim) for _ in range(num_layers)])
         self.gate_fcs = nn.ModuleList([nn.Linear(hidden_dim, hidden_dim) for _ in range(num_layers)])
 
-    def forword(self, x):
+    def forward(self, x):
         """
             x: [batch_size, seq_len, hidden_dim]                    
         """  
@@ -35,7 +34,7 @@ class Highway(nn.module):
             
 
 
-class AttnFlow(nn.module):
+class AttnFlow(nn.Module):
     
     def __init__(self, hidden_dim, dropout):
         
@@ -115,7 +114,7 @@ class AttnFlow(nn.module):
         return S
     
 
-class BiDAF(nn.module):
+class BiDAF(nn.Module):
     
     def __init__(self, vocab_size, embed_dim, hidden_dim, num_layers, dropout, pad_idx):      
         
@@ -134,19 +133,18 @@ class BiDAF(nn.module):
         self.attn_flow = AttnFlow(2*hidden_dim, dropout)
         
         # Modelling
-        self.mod = nn.LSTM(input_size = 8*hidden_dim, hidden_size = 2*hidden_dim, num_layers = 2,
+        self.mod = nn.LSTM(input_size = 8*hidden_dim, hidden_size = hidden_dim, num_layers = 2,
                            batch_first = True, bidirectional = True,
-                           dropout = dropout) 
-        
+                           dropout = dropout)         
         # Output
         # Start pointer
         self.attn_fc1 = nn.Linear(8*hidden_dim, 1)
         self.mod_fc1 = nn.Linear(2*hidden_dim, 1)
         
         # End pointer
-        self.enc_M = nn.LSTM(input_size = 2*hidden_dim, hidden_size = 2*hidden_dim, num_layers = 1,
+        self.enc_M = nn.LSTM(input_size = 2*hidden_dim, hidden_size = hidden_dim, num_layers = 1,
                              batch_first = True, bidirectional = True,
-                             dropout = dropout)        
+                             dropout = 0)        
         self.attn_fc2 = nn.Linear(8*hidden_dim, 1)
         self.mod_fc2 = nn.Linear(2*hidden_dim, 1)
         
@@ -168,16 +166,19 @@ class BiDAF(nn.module):
         
         highway_c = self.highway(embed_fc_c)  # [batch_size, c_len, hidden_dim]
         highway_q = self.highway(embed_fc_q)  # [batch_size, q_len, hidden_dim]
+                
+        enc_c, _ = self.enc(highway_c)  # [batch_size, c_len, 2*hidden_dim]     
+        enc_c = self.dropout(enc_c) 
         
-        enc_c = self.dropout(self.enc(highway_c))  # [batch_size, c_len, 2*hidden_dim]
-        enc_q = self.dropout(self.enc(highway_q))  # [batch_size, q_len, 2*hidden_dim]
+        enc_q, _ = self.enc(highway_q)  # [batch_size, q_len, 2*hidden_dim]
+        enc_q = self.dropout(enc_q)       
 
         # Attention flow layer
         G = self.attn_flow(enc_c, enc_q, mask_c, mask_q)  # [batch_size, c_len, 8*hidden_dim]
         
         # Modeling layer
-        M = self.mod(G)  # [batch_size, c_len, 2*hidden_dim]
-        M_new = self.enc_M(M)  # [batch_size, c_len, 2*hidden_dim]
+        M, _ = self.mod(G)  # [batch_size, c_len, 2*hidden_dim]
+        M_new, _ = self.enc_M(M)  # [batch_size, c_len, 2*hidden_dim]
         
         # Output
         p1 = self.attn_fc1(G) + self.mod_fc1(M)  # [batch_size, c_len, 1]
