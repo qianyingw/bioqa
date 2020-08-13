@@ -10,6 +10,8 @@ Ref: https://github.com/minggg/squad/blob/master/util.py
 import torch
 import torch.nn.functional as F
 
+import os
+import shutil
 from collections import Counter
 
 #%%
@@ -87,8 +89,7 @@ def get_ans_idx(p_s, p_e, max_len=15, no_answer=False):
 
 
 #%%
-def metric_em(pred_tokens, true_tokens):    
-    
+def metric_em(pred_tokens, true_tokens):       
     if len(pred_tokens) == len(true_tokens):
         count = 0
         for i, (true, pred) in enumerate(zip(true_tokens, pred_tokens)):
@@ -103,10 +104,8 @@ def metric_em(pred_tokens, true_tokens):
 
 
 def metric_f1(pred_tokens, true_tokens):
-
     common = Counter(true_tokens) & Counter(pred_tokens)    
-    num_same = sum(common.values())
-    
+    num_same = sum(common.values())  
     if num_same != 0:
         precision = 1.0 * num_same / len(pred_tokens)
         recall = 1.0 * num_same / len(true_tokens)
@@ -115,3 +114,43 @@ def metric_f1(pred_tokens, true_tokens):
         f1 = 0
 
     return f1
+
+
+#%% Checkpoint 
+def save_checkpoint(state, is_best, checkdir):
+    """
+    Save model and training parameters at checkpoint + 'last.pth.tar'. 
+    If is_best==True, also saves checkpoint + 'best.pth.tar'
+    Params:
+        state: (dict) contains model's state_dict, may contain other keys such as epoch, optimizer state_dict
+        is_best: (bool) True if it is the best model seen till now
+        checkdir: (string) folder where parameters are to be saved
+    """        
+    filepath = os.path.join(checkdir, 'last.pth.tar')
+    if os.path.exists(checkdir) == False:
+        os.mkdir(checkdir)
+    torch.save(state, filepath)    
+    
+    if is_best:
+        shutil.copyfile(filepath, os.path.join(checkdir, 'best.pth.tar'))
+        
+        
+        
+def load_checkpoint(checkfile, model, optimizer=None):
+    """
+    Load model parameters (state_dict) from checkfile. 
+    If optimizer is provided, loads state_dict of optimizer assuming it is present in checkpoint.
+    Params:
+        checkfile: (string) filename which needs to be loaded
+        model: (torch.nn.Module) model for which the parameters are loaded
+        optimizer: (torch.optim) optional: resume optimizer from checkpoint
+    """        
+    if os.path.exists(checkfile) == False:
+        raise("File doesn't exist {}".format(checkfile))
+    checkfile = torch.load(checkfile)
+    model.load_state_dict(checkfile['state_dict'])
+    
+    if optimizer:
+        optimizer.load_state_dict(checkfile['optim_dict'])
+    
+    return checkfile
