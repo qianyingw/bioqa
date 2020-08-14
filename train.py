@@ -21,10 +21,11 @@ import utils
 
 
 #%%
-def train(model, iterator, optimizer, scheduler, clip, accum_step):
+def train(model, MND, iterator, optimizer, scheduler, clip, accum_step):
     
-    scores = {'loss': 0}
+    scores = {'loss': 0, 'em': 0, 'f1': 0}
     len_iter = len(iterator)
+    n_samples = 0
     
     model.train()
     optimizer.zero_grad()
@@ -48,17 +49,8 @@ def train(model, iterator, optimizer, scheduler, clip, accum_step):
             
             # y1, y2 = batch.y1s[:,0], batch.y2s[:,0]
             loss = F.nll_loss(p1s, y1s) + F.nll_loss(p2s, y2s)
-                       
             scores['loss'] += loss.item() 
-            # # Average loss of multiple answers
-            # loss_candidates = []
-            # for i in range(batch.y1s.shape[1]):
-            #     y1, y2 = batch.y1s[:,i], batch.y2s[:,i]
-            #     if y1 != -999 and y2 != -999:
-            #         loss = F.nll_loss(p1s, y1) + F.nll_loss(p2s, y2)
-            #         loss_candidates.append(loss)
-            # loss = sum(loss_candidates) / len(loss_candidates)      
-                
+             
             loss = loss / accum_step  # loss gradients are accumulated by loss.backward() so we need to ave accumulated loss gradients
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), clip)  # prevent exploding gradients
@@ -68,11 +60,29 @@ def train(model, iterator, optimizer, scheduler, clip, accum_step):
                 optimizer.step()
                 scheduler.step()
                 optimizer.zero_grad()
+                
+            # Get start/end idxs
+            p1s, p2s = p1s.exp(), p1s.exp()
+            s_idxs, e_idxs = utils.get_ans_idx(p1s, p2s)  # [batch_size]
+            
+            for i, (con, s_pred, e_pred, s_true, e_true) in enumerate(zip(batch.context, s_idxs, e_idxs, y1s, y2s)):  
+                
+                s_pred, e_pred = s_pred.item(), e_pred.item()
+                s_true, e_true = s_true.item(), e_true.item()                    
+                # Convert answer idxs to tokens
+                ans_tokens_true = utils.ans_idx_to_tokens(con, s_true, e_true, MND)
+                ans_tokens_pred = utils.ans_idx_to_tokens(con, s_pred, e_pred, MND)
+                # Calculate em/f1 for each record
+                scores['em'] += utils.metric_em(ans_tokens_pred, ans_tokens_true)
+                scores['f1'] += utils.metric_f1(ans_tokens_pred, ans_tokens_true)   
+                n_samples += 1      
+                
             progress_bar.update(1)  # update progress bar             
-    
-    for key, value in scores.items():
-        scores[key] = value / len_iter
-    
+            
+    scores['loss'] = scores['loss'] / len_iter
+    scores['em'] = scores['em'] / n_samples
+    scores['f1'] = scores['f1'] / n_samples
+
     return scores
 
 
@@ -81,6 +91,7 @@ def evaluate(model, MND, iterator):
     
     scores = {'loss': 0, 'em': 0, 'f1': 0}
     len_iter = len(iterator)
+    n_samples = 0
     
     model.eval()
     
@@ -105,53 +116,26 @@ def evaluate(model, MND, iterator):
                 p1s, p2s = p1s.exp(), p1s.exp()
                 s_idxs, e_idxs = utils.get_ans_idx(p1s, p2s)  # [batch_size]
     
-                # Convert idxs to tokens   
-                batch_em, batch_f1 = 0, 0
                 for i, (con, s_pred, e_pred, s_true, e_true) in enumerate(zip(batch.context, s_idxs, e_idxs, y1s, y2s)):
                     
-                    s_pred = s_pred.item()
-                    e_pred = e_pred.item()
-                    s_true = s_true.item()
-                    e_true = e_true.item()
+                    s_pred, e_pred = s_pred.item(), e_pred.item()
+                    s_true, e_true = s_true.item(), e_true.item()
                     
-                    # True tokens
-                    ans_tokens_true = []   
-                    # "idx of content" =>>> "idx of TEXT vocab"
-                    if s_true == e_true:
-                        ans_vocab_idx_true = con[s_true]
-                        text = MND.TEXT.vocab.itos[ans_vocab_idx_true]
-                        ans_tokens_true.append(text.lower())
-                    else:
-                        ans_vocab_idx_true = con[s_true:e_true]  
-                        for vocab_idx in ans_vocab_idx_true:
-                            text = MND.TEXT.vocab.itos[vocab_idx]
-                            ans_tokens_true.append(text.lower())
-                        
-                    # Pred tokens
-                    ans_tokens_pred = []
-                    # "idx of content" =>>> "idx of TEXT vocab"
-                    if s_pred == e_pred:
-                        ans_vocab_idx_pred = con[s_pred]
-                        text = MND.TEXT.vocab.itos[ans_vocab_idx_pred]
-                        ans_tokens_pred.append(text.lower())
-                    else:
-                        ans_vocab_idx_pred = con[s_pred:e_pred]                       
-                        for vocab_idx in ans_vocab_idx_pred:
-                            text = MND.TEXT.vocab.itos[vocab_idx]
-                            ans_tokens_pred.append(text.lower())
-                                                    
-                    batch_em += utils.metric_em(ans_tokens_pred, ans_tokens_true)
-                    batch_f1 += utils.metric_f1(ans_tokens_pred, ans_tokens_true)    
-                        
-                scores['loss'] += loss.item()           
-                scores['em'] += batch_em / batch.context.shape[0]
-                scores['f1'] += batch_f1 / batch.context.shape[0]
+                    # Convert answer idxs to tokens
+                    ans_tokens_true = utils.ans_idx_to_tokens(con, s_true, e_true, MND)
+                    ans_tokens_pred = utils.ans_idx_to_tokens(con, s_pred, e_pred, MND)
+                    # Calculate em/f1 for each record
+                    scores['em'] += utils.metric_em(ans_tokens_pred, ans_tokens_true)
+                    scores['f1'] += utils.metric_f1(ans_tokens_pred, ans_tokens_true)   
+                    n_samples += 1
+                                                                                               
+                scores['loss'] += loss.item()                          
+                progress_bar.update(1)  # update progress bar 
                 
-                progress_bar.update(1)  # update progress bar             
-    
-    for key, value in scores.items():
-        scores[key] = value / len_iter
-    
+    scores['loss'] = scores['loss'] / len_iter
+    scores['em'] = scores['em'] / n_samples
+    scores['f1'] = scores['f1'] / n_samples
+
     return scores
 
 
