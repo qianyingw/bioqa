@@ -89,16 +89,14 @@ def get_ans_idx(p_s, p_e, max_len=15, no_answer=False):
 
 
 #%%
-def metric_em(pred_tokens, true_tokens):       
+def metric_em(pred_tokens, true_tokens):    
+    em = 0
     if len(pred_tokens) == len(true_tokens):
         count = 0
         for i, (true, pred) in enumerate(zip(true_tokens, pred_tokens)):
-            count = (true == pred)
-            count += count
+            count += (true == pred)
         if count == len(pred_tokens):
             em = 1  
-    else: 
-        em = 0  
     return em
 
 
@@ -112,7 +110,6 @@ def metric_f1(pred_tokens, true_tokens):
         f1 = (2 * precision * recall) / (precision + recall)
     else:
         f1 = 0
-
     return f1
 
 
