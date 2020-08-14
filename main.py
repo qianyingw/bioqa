@@ -16,7 +16,9 @@ import torch.optim as optim
 
 # os.chdir('/home/qwang/bioqa')
 
+
 from arg_parser import get_args
+import utils
 from data_loader import MNDIterators
 from model import BiDAF
 from train import train, evaluate
@@ -93,6 +95,10 @@ if os.path.exists(args.exp_dir) == False:
 # Create args and output dictionary (for json output)
 output_dict = {'args': vars(args), 'prfs': {}}
 
+# For early stopping
+n_worse = 0
+min_valid_loss = float('inf')
+
 for epoch in range(args.num_epochs):   
     train_scores = train(model, MND, train_iter, optimizer, scheduler, args.clip, args.accum_step)
     valid_scores = evaluate(model, MND, valid_iter)        
@@ -100,18 +106,47 @@ for epoch in range(args.num_epochs):
     # Update output dictionary
     output_dict['prfs'][str('train_'+str(epoch+1))] = train_scores
     output_dict['prfs'][str('valid_'+str(epoch+1))] = valid_scores
+       
+    # Save scores
+    if valid_scores['loss'] < min_valid_loss:
+        min_valid_loss = valid_scores['loss']    
+    # if valid_scores['f1'] > max_valid_f1:
+    #     max_valid_f1 = valid_scores['f1'] 
+        
+    is_best = (valid_scores['loss']-min_valid_loss <= 0) # args.stop_c1) and (max_valid_f1-valid_scores['f1'] <= args.stop_c2)
+    if is_best == True:       
+        utils.save_dict_to_json(valid_scores, os.path.join(args.exp_dir, 'best_val_scores.json'))
+    
+    # Save model
+    if args.save_model == True:
+        utils.save_checkpoint({'epoch': epoch+1,
+                               'state_dict': model.state_dict(),
+                               'optim_Dict': optimizer.state_dict()},
+                               is_best = is_best, checkdir = args.exp_dir)
     
     print("\n\nEpoch {}/{}...".format(epoch+1, args.num_epochs))                       
-    print('[Train] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}%\n'.format(train_scores['loss'], train_scores['em']*100, train_scores['f1']*100))
+    print('[Train] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}%'.format(train_scores['loss'], train_scores['em']*100, train_scores['f1']*100))
     print('[Valid] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}%\n'.format(valid_scores['loss'], valid_scores['em']*100, valid_scores['f1']*100))
     
+    # Early stopping             
+    if valid_scores['loss']-min_valid_loss > 0: # args.stop_c1) and (max_valid_f1-valid_scores['f1'] > args.stop_c2):
+        n_worse += 1
+    if n_worse == 5: # args.stop_p:
+        print("Early stopping")
+        break
+        
 # Write performance and args to json
 prfs_name = os.path.basename(args.exp_dir)+'_prfs.json'
 prfs_path = os.path.join(args.exp_dir, prfs_name)
 with open(prfs_path, 'w') as fout:
     json.dump(output_dict, fout, indent=4)
-        
+
+#%% plot
+utils.plot_prfs(prfs_path) 
+
 
 #%% Test
 # if args.save_model:
 #     test_scores = test(model, test_iterator, criterion, metrics_fn, args, restore_file = 'best')
+
+
