@@ -12,6 +12,11 @@ import torch.nn.functional as F
 
 import os
 import shutil
+import json
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
 from collections import Counter
 
 #%%
@@ -178,3 +183,48 @@ def load_checkpoint(checkfile, model, optimizer=None):
         optimizer.load_state_dict(checkfile['optim_dict'])
     
     return checkfile
+
+
+def save_dict_to_json(d, json_path):
+    """
+    Save dict of floats to json file
+    d: dict of float-castable values (np.float, int, float, etc.)
+      
+    """      
+    with open(json_path, 'w') as fout:
+        d = {key: float(value) for key, value in d.items()}
+        json.dump(d, fout, indent=4)
+        
+#%%
+def plot_prfs(prfs_json_path):
+    
+    with open(prfs_json_path) as f:
+        dat = json.load(f)
+ 
+    # Create scores dataframe
+    epochs = int(len(dat['prfs'])/2)
+    train_df = pd.DataFrame(columns=['Loss', 'EM', 'F1'])
+    valid_df = pd.DataFrame(columns=['Loss', 'EM', 'F1'])
+    for i in range(epochs):
+        train_df.loc[i] = list(dat['prfs']['train_'+str(i+1)].values())
+        valid_df.loc[i] = list(dat['prfs']['valid_'+str(i+1)].values()) 
+    
+    # Plot
+    plt.figure(figsize=(15,5))
+    x = np.arange(len(train_df)) + 1   
+    # Loss / F1
+    plt.subplot(1, 2, 1)
+    plt.title("Loss and F1")
+    plt.plot(x, train_df['Loss'], label="train_loss", color='C5')
+    plt.plot(x, valid_df['Loss'], label="val_loss", color='C5', linestyle='--')
+    plt.xticks(np.arange(2, len(x)+2, step=2))
+    plt.legend(loc='upper right')
+    # Accuracy / Recall
+    plt.subplot(1, 2, 2)
+    plt.title("Accuracy and Score")
+    plt.plot(x, train_df['EM'], label="train_em", color='C0', alpha=0.8)
+    plt.plot(x, valid_df['EM'], label="val_em", color='C0', linestyle='--', alpha=0.8)
+    plt.plot(x, train_df['F1'], label="train_f1", color='C1')
+    plt.plot(x, valid_df['F1'], label="val_f1", color='C1', linestyle='--')
+    plt.xticks(np.arange(2, len(x)+2, step=2))
+    plt.legend(loc='lower right')    
