@@ -115,18 +115,30 @@ def evaluate(model, MND, iterator):
                     e_true = e_true.item()
                     
                     # True tokens
-                    ans_tokens_true = []                    
-                    ans_vocab_idx_true = con[s_true:e_true]  # "idx of content" =>>> "idx of TEXT vocab"
-                    for vocab_idx in ans_vocab_idx_true:
-                        text = MND.TEXT.vocab.itos[vocab_idx]
+                    ans_tokens_true = []   
+                    # "idx of content" =>>> "idx of TEXT vocab"
+                    if s_true == e_true:
+                        ans_vocab_idx_true = con[s_true]
+                        text = MND.TEXT.vocab.itos[ans_vocab_idx_true]
                         ans_tokens_true.append(text.lower())
+                    else:
+                        ans_vocab_idx_true = con[s_true:e_true]  
+                        for vocab_idx in ans_vocab_idx_true:
+                            text = MND.TEXT.vocab.itos[vocab_idx]
+                            ans_tokens_true.append(text.lower())
                         
                     # Pred tokens
                     ans_tokens_pred = []
-                    ans_vocab_idx_pred = con[s_pred:e_pred]  # "idx of content" =>>> "idx of TEXT vocab"
-                    for vocab_idx in ans_vocab_idx_pred:
-                        text = MND.TEXT.vocab.itos[vocab_idx]
+                    # "idx of content" =>>> "idx of TEXT vocab"
+                    if s_pred == e_pred:
+                        ans_vocab_idx_pred = con[s_pred]
+                        text = MND.TEXT.vocab.itos[ans_vocab_idx_pred]
                         ans_tokens_pred.append(text.lower())
+                    else:
+                        ans_vocab_idx_pred = con[s_pred:e_pred]                       
+                        for vocab_idx in ans_vocab_idx_pred:
+                            text = MND.TEXT.vocab.itos[vocab_idx]
+                            ans_tokens_pred.append(text.lower())
                                                     
                     batch_em += utils.metric_em(ans_tokens_pred, ans_tokens_true)
                     batch_f1 += utils.metric_f1(ans_tokens_pred, ans_tokens_true)    
