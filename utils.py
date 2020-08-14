@@ -113,6 +113,33 @@ def metric_f1(pred_tokens, true_tokens):
     return f1
 
 
+#%%
+def ans_idx_to_tokens(context_idxs, s, e, MND):
+    """
+    Convert "answer idx of context" to "answer tokens" for a single record
+    Input:
+        context_idxs: [c_len], tensor containing context idxs of a single record
+        s: int, idx of answer start
+        e: int, idx of answer end
+        MND: torchtext iterators
+    Output:
+        ans_tokens: list of answer tokens of the single record
+    """   
+    
+    ans_tokens = []   
+    if s == e:       
+        ans_vocab_idx = context_idxs[s]  # "idx of content" =>>> "idx of TEXT vocab"
+        text = MND.TEXT.vocab.itos[ans_vocab_idx]  # "idx of TEXT vocab" =>>> "answer text token"
+        ans_tokens.append(text.lower())
+    else:
+        ans_vocab_idx = context_idxs[s:e]  
+        for vocab_idx in ans_vocab_idx:
+            text = MND.TEXT.vocab.itos[vocab_idx]
+            ans_tokens.append(text.lower())
+            
+    return ans_tokens
+
+
 #%% Checkpoint 
 def save_checkpoint(state, is_best, checkdir):
     """
