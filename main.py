@@ -61,7 +61,7 @@ model = BiDAF(vocab_size = vocab_size,
 
 n_pars = sum(p.numel() for p in model.parameters())
 # print(model)
-print("Number of parameters: {}".format(n_pars))
+# print("Number of parameters: {}".format(n_pars))
 
 #%% Load pre-trained embedding
 pretrained_embeddings = MND.TEXT.vocab.vectors
@@ -94,7 +94,7 @@ if os.path.exists(args.exp_dir) == False:
 output_dict = {'args': vars(args), 'prfs': {}}
 
 for epoch in range(args.num_epochs):   
-    train_scores = train(model, train_iter, optimizer, scheduler, args.clip, args.accum_step)
+    train_scores = train(model, MND, train_iter, optimizer, scheduler, args.clip, args.accum_step)
     valid_scores = evaluate(model, MND, valid_iter)        
 
     # Update output dictionary
@@ -102,8 +102,8 @@ for epoch in range(args.num_epochs):
     output_dict['prfs'][str('valid_'+str(epoch+1))] = valid_scores
     
     print("\n\nEpoch {}/{}...".format(epoch+1, args.num_epochs))                       
-    print('\n[Train] loss: {0:.3f}'.format(train_scores['loss']))
-    print('[Val] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}%\n'.format(valid_scores['loss'], valid_scores['em']*100, valid_scores['f1']*100))
+    print('[Train] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}%\n'.format(train_scores['loss'], train_scores['em']*100, train_scores['f1']*100))
+    print('[Valid] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}%\n'.format(valid_scores['loss'], valid_scores['em']*100, valid_scores['f1']*100))
     
 # Write performance and args to json
 prfs_name = os.path.basename(args.exp_dir)+'_prfs.json'
