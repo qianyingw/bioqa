@@ -31,13 +31,13 @@ def get_args():
     # Experiments
     parser.add_argument('--seed', nargs="?", type=int, default=1234, help='Seed for random number generator')
     parser.add_argument('--batch_size', nargs="?", type=int, default=32, help='Batch size')
-    parser.add_argument('--num_epochs', nargs="?", type=int, default=10, help='Number of epochs')    
+    parser.add_argument('--num_epochs', nargs="?", type=int, default=20, help='Number of epochs')    
     parser.add_argument('--args_json_path', nargs="?", type=str, default=None, help='Path of argument json file') 
-    parser.add_argument('--exp_dir', nargs="?", type=str, default="/media/qwang/bioqa/exps", help='Folder of the experiment')
+    parser.add_argument('--exp_dir', nargs="?", type=str, default="/home/qwang/bioqa/exps", help='Folder of the experiment')
     parser.add_argument('--clip', nargs="?", type=float, default=0.1, help='Gradient clipping')
     parser.add_argument('--accum_step', nargs="?", type=int, default=4, help='Number of steps for gradient accumulation')
     parser.add_argument('--warm_frac', nargs="?", type=float, default=0.1, help='Fraction of iterations when lr increased')
-    # parser.add_argument('--save_model', nargs="?", type=str2bool, default=False, help='Save model.pth.tar with best loss')   
+    parser.add_argument('--save_model', nargs="?", type=str2bool, default=True, help='Save model.pth.tar with best loss')   
        
     # Data and embedding
     parser.add_argument('--data_dir', nargs="?", type=str, default="/media/mynewdrive/bioqa/mnd", help='Folder containing json data')
