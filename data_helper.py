@@ -81,8 +81,15 @@ def process_records(dat, lower):
 
 #%%
 json_dir = '/media/mynewdrive/bioqa/mnd'
+
+# Intervention only
 with open(os.path.join(json_dir, 'MND-Intervention-1983-06Aug20.json')) as fin:
     dat = json.load(fin)
+
+# Intervention & Disease
+with open(os.path.join(json_dir, 'MND-DI-3933-19Aug20.json')) as fin:
+    dat = json.load(fin)
+
 
 train_ls = process_records(dat['train'], lower=False)
 for i, ls in enumerate(train_ls):
@@ -95,7 +102,6 @@ for i, ls in enumerate(valid_ls):
 test_ls = process_records(dat['test'], lower=False)
 for i, ls in enumerate(test_ls):
     test_ls[i]['id'] = 'test_' + str(test_ls[i]['id'])
-    
     
     
 
