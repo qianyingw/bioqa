@@ -80,13 +80,18 @@ def process_records(dat, lower):
     return records
 
 #%%
-json_dir = '/media/mynewdrive/bioqa/mnd'
-
 # Intervention only
+json_dir = '/media/mynewdrive/bioqa/mnd/intervention'
 with open(os.path.join(json_dir, 'MND-Intervention-1983-06Aug20.json')) as fin:
     dat = json.load(fin)
 
+# Disease only
+json_dir = '/media/mynewdrive/bioqa/mnd/disease'
+with open(os.path.join(json_dir, 'MND-Disease-1950-19Aug20.json')) as fin:
+    dat = json.load(fin)
+    
 # Intervention & Disease
+json_dir = '/media/mynewdrive/bioqa/mnd/di'
 with open(os.path.join(json_dir, 'MND-DI-3933-19Aug20.json')) as fin:
     dat = json.load(fin)
 
