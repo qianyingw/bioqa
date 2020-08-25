@@ -65,7 +65,7 @@ def train(model, MND, iterator, optimizer, scheduler, clip, accum_step):
             p1s, p2s = p1s.exp(), p1s.exp()
             s_idxs, e_idxs = utils.get_ans_idx(p1s, p2s)  # [batch_size]
             
-            for i, (con, s_pred, e_pred, s_true, e_true) in enumerate(zip(batch.context, s_idxs, e_idxs, y1s, y2s)):  
+            for _, (con, s_pred, e_pred, s_true, e_true) in enumerate(zip(batch.context, s_idxs, e_idxs, y1s, y2s)):  
                 
                 s_pred, e_pred = s_pred.item(), e_pred.item()
                 s_true, e_true = s_true.item(), e_true.item()                    
@@ -116,7 +116,7 @@ def evaluate(model, MND, iterator):
                 p1s, p2s = p1s.exp(), p1s.exp()
                 s_idxs, e_idxs = utils.get_ans_idx(p1s, p2s)  # [batch_size]
     
-                for i, (con, s_pred, e_pred, s_true, e_true) in enumerate(zip(batch.context, s_idxs, e_idxs, y1s, y2s)):
+                for _, (con, s_pred, e_pred, s_true, e_true) in enumerate(zip(batch.context, s_idxs, e_idxs, y1s, y2s)):
                     
                     s_pred, e_pred = s_pred.item(), e_pred.item()
                     s_true, e_true = s_true.item(), e_true.item()
