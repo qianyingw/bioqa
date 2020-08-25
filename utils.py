@@ -137,7 +137,8 @@ def ans_idx_to_tokens(context_idxs, s, e, MND):
         text = MND.TEXT.vocab.itos[ans_vocab_idx]  # "idx of TEXT vocab" =>>> "answer text token"
         ans_tokens.append(text.lower())
     else:
-        ans_vocab_idx = context_idxs[s:e]  
+        ans_vocab_idx = context_idxs[s:(e+1)] 
+        # ans_vocab_idx = context_idxs[s:e]  
         for vocab_idx in ans_vocab_idx:
             text = MND.TEXT.vocab.itos[vocab_idx]
             ans_tokens.append(text.lower())
