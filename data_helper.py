@@ -9,6 +9,7 @@ Created on Mon Aug  3 18:47:55 2020
 import json
 import spacy
 import os
+
 nlp = spacy.load("en_core_web_sm")
 
 #%%
@@ -57,7 +58,7 @@ def process_records(dat, lower):
             ans_text = ans['text']
             ans_start = ans['answer_start']
             if ans_start != -999:
-                ans_end = ans_start + len(ans_text)
+                ans_end = ans_start + len(ans_text) - 1
                 answers.append(ans_text)
                 
                 ans_token_idxs = []
