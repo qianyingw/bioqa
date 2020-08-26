@@ -124,15 +124,13 @@ def train(model, data_loader, optimizer, scheduler, tokenizer, clip, accum_step,
                 ans_piece_tokens = all_tokens[s_idxs[i]: (e_idxs[i]+1)]
                 answer_ids = tokenizer.convert_tokens_to_ids(ans_piece_tokens)
                 answer = tokenizer.decode(answer_ids)
-                ans_tokens_pred = answer.lower().split()
-                # ans_tokens_pred.append(ans_tokens)                
+                ans_tokens_pred = answer.lower().split()             
                 
                 # True answer tokens
                 ans_piece_tokens = all_tokens[y1s[i]: (y2s[i]+1)]
                 answer_ids = tokenizer.convert_tokens_to_ids(ans_piece_tokens)
                 answer = tokenizer.decode(answer_ids)
                 ans_tokens_true = answer.lower().split()
-                # ans_tokens_true.append(ans_tokens)
                 
                 scores['em'] += utils.metric_em(ans_tokens_pred, ans_tokens_true)
                 scores['f1'] += utils.metric_f1(ans_tokens_pred, ans_tokens_true)   
@@ -189,15 +187,13 @@ def evaluate(model, data_loader, tokenizer, device):
                     ans_piece_tokens = all_tokens[s_idxs[i]: (e_idxs[i]+1)]
                     answer_ids = tokenizer.convert_tokens_to_ids(ans_piece_tokens)
                     answer = tokenizer.decode(answer_ids)
-                    ans_tokens = answer.lower().split()
-                    ans_tokens_pred.append(ans_tokens)
+                    ans_tokens_pred = answer.lower().split()             
                     
                     # True answer tokens
                     ans_piece_tokens = all_tokens[y1s[i]: (y2s[i]+1)]
                     answer_ids = tokenizer.convert_tokens_to_ids(ans_piece_tokens)
                     answer = tokenizer.decode(answer_ids)
-                    ans_tokens = answer.lower().split()
-                    ans_tokens_true.append(ans_tokens)
+                    ans_tokens_true = answer.lower().split()
                     
                     scores['em'] += utils.metric_em(ans_tokens_pred, ans_tokens_true)
                     scores['f1'] += utils.metric_f1(ans_tokens_pred, ans_tokens_true)   
