@@ -14,6 +14,8 @@ import torch.nn as nn
 
 import utils
 
+import transformers
+
 #%%
 def read_data(dat):
     '''
@@ -34,12 +36,12 @@ def read_data(dat):
     return contexts, questions, answers
         
 
-def char2token_encodings(contexts, questions, answers, tokenizer):
+def char2token_encodings(contexts, questions, answers, tokenizer, truncation=True):
     '''
         Tokenization
         Convert answer char positions to token positions
     '''
-    encodings = tokenizer(contexts, questions, truncation=True, padding=True)
+    encodings = tokenizer(contexts, questions, truncation=truncation, padding=True)
     token_starts, token_ends = [], []
     for i in range(len(contexts)):
         # Convert character positions to token positions
@@ -90,16 +92,22 @@ def train(model, data_loader, optimizer, scheduler, tokenizer, clip, accum_step,
             y1s = batch['token_starts'].to(device)  # [batch_size]
             y2s = batch['token_ends'].to(device)  # [batch_size]
             
-            outputs = model(input_ids, 
-                            attention_mask = attn_mask, 
-                            start_positions = y1s, 
-                            end_positions = y2s)        
+            # ids = batch['input_ids'].type(torch.LongTensor).to(device)
+            # attn = batch['attention_mask'].type(torch.FloatTensor).to(device)
+            # outputs = model(input_ids, attention_mask = attn_mask) 
+            
+            
+            if type(tokenizer) == transformers.tokenization_distilbert.DistilBertTokenizerFast:
+                outputs = model(input_ids, attention_mask = attn_mask, 
+                                start_positions = y1s, end_positions = y2s)   
+            if type(tokenizer) == transformers.tokenization_longformer.LongformerTokenizerFast:
+                outputs = model(input_ids, attention_mask = attn_mask)   
             
             loss = outputs[0]
             p1s, p2s = outputs[1], outputs[2]  # [batch_size, c_len]
     
             scores['loss'] += loss.item() 
-             
+            
             loss = loss / accum_step  # loss gradients are accumulated by loss.backward() so we need to ave accumulated loss gradients
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), clip)  # prevent exploding gradients
@@ -164,10 +172,11 @@ def evaluate(model, data_loader, tokenizer, device):
                 y1s = batch['token_starts'].to(device)  # [batch_size]
                 y2s = batch['token_ends'].to(device)  # [batch_size]
                 
-                outputs = model(input_ids, 
-                                attention_mask = attn_mask, 
-                                start_positions = y1s, 
-                                end_positions = y2s)        
+                if type(model) == transformers.modeling_distilbert.DistilBertForQuestionAnswering:
+                    outputs = model(input_ids, attention_mask = attn_mask, 
+                                    start_positions = y1s, end_positions = y2s)   
+                if type(model) == transformers.modeling_longformer.LongformerForQuestionAnswering:
+                    outputs = model(input_ids, attention_mask = attn_mask)         
                 
                 loss = outputs[0]
                 p1s, p2s = outputs[1], outputs[2]  # [batch_size, c_len]  
