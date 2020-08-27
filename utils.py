@@ -215,14 +215,14 @@ def plot_prfs(prfs_json_path):
     x = np.arange(len(train_df)) + 1   
     # Loss / F1
     plt.subplot(1, 2, 1)
-    plt.title("Loss and F1")
+    plt.title("Loss")
     plt.plot(x, train_df['Loss'], label="train_loss", color='C5')
     plt.plot(x, valid_df['Loss'], label="val_loss", color='C5', linestyle='--')
     plt.xticks(np.arange(2, len(x)+2, step=2))
     plt.legend(loc='upper right')
     # Accuracy / Recall
     plt.subplot(1, 2, 2)
-    plt.title("Accuracy and Score")
+    plt.title("EM & F1")
     plt.plot(x, train_df['EM'], label="train_em", color='C0', alpha=0.8)
     plt.plot(x, valid_df['EM'], label="val_em", color='C0', linestyle='--', alpha=0.8)
     plt.plot(x, train_df['F1'], label="train_f1", color='C1')
