@@ -92,11 +92,6 @@ def train(model, data_loader, optimizer, scheduler, tokenizer, clip, accum_step,
             y1s = batch['token_starts'].to(device)  # [batch_size]
             y2s = batch['token_ends'].to(device)  # [batch_size]
             
-            # ids = batch['input_ids'].type(torch.LongTensor).to(device)
-            # attn = batch['attention_mask'].type(torch.FloatTensor).to(device)
-            # outputs = model(input_ids, attention_mask = attn_mask) 
-            
-            
             if type(tokenizer) == transformers.tokenization_distilbert.DistilBertTokenizerFast:
                 outputs = model(input_ids, attention_mask = attn_mask, 
                                 start_positions = y1s, end_positions = y2s)   
