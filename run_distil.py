@@ -44,8 +44,8 @@ valid_contexts, valid_questions, valid_answers = read_data(dat['valid'])
 # Define 'Fast' Tokenizer
 tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')   
 
-train_encodings = char2token_encodings(train_contexts, train_questions, train_answers, tokenizer)
-valid_encodings = char2token_encodings(valid_contexts, valid_questions, valid_answers, tokenizer)
+train_encodings = char2token_encodings(train_contexts, train_questions, train_answers, tokenizer, truncation=True)
+valid_encodings = char2token_encodings(valid_contexts, valid_questions, valid_answers, tokenizer, truncation=True)
 
 train_dataset = MNDDataset(train_encodings)
 valid_dataset = MNDDataset(valid_encodings)
