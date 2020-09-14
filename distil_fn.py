@@ -27,7 +27,7 @@ def read_data(dat):
         question = record['question'].replace("''", '" ').replace("``", '" ') 
         
         answer = record['answers'][0]  # Use first match as the true answer
-        answer['answer_end'] = answer['answer_start'] + len(answer)
+        answer['answer_end'] = answer['answer_start'] + len(answer) - 1
         
         contexts.append(context)
         questions.append(question)
@@ -46,7 +46,7 @@ def char2token_encodings(contexts, questions, answers, tokenizer, truncation=Tru
     for i in range(len(contexts)):
         # Convert character positions to token positions
         token_start = encodings.char_to_token(i, answers[i]['answer_start'])
-        token_end = encodings.char_to_token(i, answers[i]['answer_end'] - 1)
+        token_end = encodings.char_to_token(i, answers[i]['answer_end'])
         
         token_starts.append(token_start)
         token_ends.append(token_end)
