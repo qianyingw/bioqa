@@ -9,6 +9,7 @@ Created on Wed Aug 26 15:26:38 2020
 import json
 import os
 
+from transformers import BertTokenizerFast, BertForQuestionAnswering
 from transformers import DistilBertTokenizerFast, DistilBertForQuestionAnswering  # DistilBertTokenizer
 from transformers import AdamW, get_linear_schedule_with_warmup
 
@@ -24,15 +25,6 @@ from distil_fn import train, evaluate
 #%% Read data
 args = get_args()
 
-# args = {
-#     'num_epochs': 4,
-#     'batch_size': 32,
-#     'data_dir': '/media/mynewdrive/bioqa/mnd/intervention',
-#     'data_name': 'MND-Intervention-1983-06Aug20.json',  
-#     'accum_step': 4,
-#     'warm_frac': 0.1
-#     }    
-
 with open(os.path.join(args.data_dir, args.data_name)) as fin:
     dat = json.load(fin)    
 
@@ -42,10 +34,20 @@ valid_contexts, valid_questions, valid_answers = read_data(dat['valid'])
  
 #%% Encodings & Dataset & DataLoader  
 # Define 'Fast' Tokenizer
-tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')   
-
-train_encodings = char2token_encodings(train_contexts, train_questions, train_answers, tokenizer, truncation=True)
-valid_encodings = char2token_encodings(valid_contexts, valid_questions, valid_answers, tokenizer, truncation=True)
+if args.pre_wgts == 'distil':
+    tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')   
+elif args.pre_wgts == 'biobert':
+    tokenizer = BertTokenizerFast.from_pretrained('dmis-lab/biobert-v1.1')  
+elif args.pre_wgts == 'pubmed-full':
+    tokenizer = BertTokenizerFast.from_pretrained('microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext') 
+elif args.pre_wgts == 'pubmed-abs':
+    tokenizer = BertTokenizerFast.from_pretrained('microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract')       
+else: # args.pre_wgts == 'bert-base'
+    # tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
+    tokenizer = BertTokenizerFast.from_pretrained('/media/mynewdrive/rob/data/pre_wgts/bert_base')    
+ 
+train_encodings = char2token_encodings(train_contexts, train_questions, train_answers, tokenizer, truncation=True, max_len=512)
+valid_encodings = char2token_encodings(valid_contexts, valid_questions, valid_answers, tokenizer, truncation=True, max_len=512)
 
 train_dataset = MNDDataset(train_encodings)
 valid_dataset = MNDDataset(valid_encodings)
@@ -57,7 +59,17 @@ valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=Tru
 #%% Model & Optimizer & Scheduler
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-model = DistilBertForQuestionAnswering.from_pretrained("distilbert-base-uncased")
+if args.pre_wgts == 'distil':
+    model = DistilBertForQuestionAnswering.from_pretrained("distilbert-base-uncased")  
+elif args.pre_wgts == 'biobert':
+    model = BertForQuestionAnswering.from_pretrained("dmis-lab/biobert-v1.1")
+elif args.pre_wgts == 'pubmed-full':
+    model = BertForQuestionAnswering.from_pretrained('microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext') 
+elif args.pre_wgts == 'pubmed-abs':
+    model = BertForQuestionAnswering.from_pretrained('microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract')        
+else: # args.pre_wgts == 'bert-base'
+    model = BertForQuestionAnswering.from_pretrained('/media/mynewdrive/rob/data/pre_wgts/bert_base')   
+    
 model.to(device)
 
 optimizer = AdamW(model.parameters(), lr=5e-5)
