@@ -53,9 +53,9 @@ def char2token_encodings(contexts, questions, answers, tokenizer, truncation, ma
         
         # If None, the answer passage has been truncated
         if token_starts[-1] is None:
-            token_starts[-1] = tokenizer.model_max_length
+            token_starts[-1] = -999 # tokenizer.model_max_length
         if token_ends[-1] is None:
-            token_ends[-1] = tokenizer.model_max_length
+            token_ends[-1] = -999 # tokenizer.model_max_length
     encodings.update({'token_starts': token_starts, 'token_ends': token_ends})
     
     return encodings
@@ -85,13 +85,16 @@ def train(model, data_loader, optimizer, scheduler, tokenizer, clip, accum_step,
     optimizer.zero_grad()
     
     with tqdm(total=len_iter) as progress_bar:      
-        for i, batch in enumerate(data_loader):                      
+        for j, batch in enumerate(data_loader):                      
             
             input_ids = batch['input_ids'].to(device)  # [batch_size, c_len]
             attn_mask = batch['attention_mask'].to(device)  # [batch_size, c_len]
             y1s = batch['token_starts'].to(device)  # [batch_size]
             y2s = batch['token_ends'].to(device)  # [batch_size]
             
+            if type(tokenizer) == transformers.tokenization_distilbert.DistilBertTokenizer:
+                outputs = model(input_ids, attention_mask = attn_mask, 
+                                start_positions = y1s, end_positions = y2s) 
             if type(tokenizer) == transformers.tokenization_distilbert.DistilBertTokenizerFast:
                 outputs = model(input_ids, attention_mask = attn_mask, 
                                 start_positions = y1s, end_positions = y2s) 
@@ -111,7 +114,7 @@ def train(model, data_loader, optimizer, scheduler, tokenizer, clip, accum_step,
             nn.utils.clip_grad_norm_(model.parameters(), clip)  # prevent exploding gradients
                       
             # Gradient accumulation    
-            if (i+1) % accum_step == 0:
+            if (j+1) % accum_step == 0:
                 optimizer.step()
                 scheduler.step()
                 optimizer.zero_grad()
@@ -126,20 +129,22 @@ def train(model, data_loader, optimizer, scheduler, tokenizer, clip, accum_step,
             for i in range(p1s.shape[0]):
                 all_tokens = tokenizer.convert_ids_to_tokens(batch['input_ids'][i])
                 
-                # Predicted answer tokens
-                ans_piece_tokens = all_tokens[s_idxs[i]: (e_idxs[i]+1)]
-                answer_ids = tokenizer.convert_tokens_to_ids(ans_piece_tokens)
-                answer = tokenizer.decode(answer_ids)
-                ans_tokens_pred = answer.lower().split()             
-                
-                # True answer tokens
-                ans_piece_tokens = all_tokens[y1s[i]: (y2s[i]+1)]
-                answer_ids = tokenizer.convert_tokens_to_ids(ans_piece_tokens)
-                answer = tokenizer.decode(answer_ids)
-                ans_tokens_true = answer.lower().split()
-                
-                scores['em'] += utils.metric_em(ans_tokens_pred, ans_tokens_true)
-                scores['f1'] += utils.metric_f1(ans_tokens_pred, ans_tokens_true)   
+                if (y1s[i] >= 0) and (y2s[i] >= 0):  # When the answer passage not truncated
+                    # Predicted answer tokens
+                    ans_piece_tokens = all_tokens[s_idxs[i]: (e_idxs[i]+1)]
+                    answer_ids = tokenizer.convert_tokens_to_ids(ans_piece_tokens)
+                    answer = tokenizer.decode(answer_ids)
+                    ans_tokens_pred = answer.lower().split()             
+                    
+                    # True answer tokens
+                    ans_piece_tokens = all_tokens[y1s[i]: (y2s[i]+1)]
+                    answer_ids = tokenizer.convert_tokens_to_ids(ans_piece_tokens)
+                    answer = tokenizer.decode(answer_ids)
+                    ans_tokens_true = answer.lower().split()
+                    
+                    scores['em'] += utils.metric_em(ans_tokens_pred, ans_tokens_true)
+                    scores['f1'] += utils.metric_f1(ans_tokens_pred, ans_tokens_true) 
+                    
                 n_samples += 1    
                 
             progress_bar.update(1)  # update progress bar             
@@ -163,7 +168,7 @@ def evaluate(model, data_loader, tokenizer, device):
     
     with torch.no_grad():
         with tqdm(total=len_iter) as progress_bar:      
-            for i, batch in enumerate(data_loader):                      
+            for j, batch in enumerate(data_loader):                      
                 
                 input_ids = batch['input_ids'].to(device)  # [batch_size, c_len]
                 attn_mask = batch['attention_mask'].to(device)  # [batch_size, c_len]
@@ -193,20 +198,22 @@ def evaluate(model, data_loader, tokenizer, device):
                 for i in range(p1s.shape[0]):
                     all_tokens = tokenizer.convert_ids_to_tokens(batch['input_ids'][i])
                     
-                    # Predicted answer tokens
-                    ans_piece_tokens = all_tokens[s_idxs[i]: (e_idxs[i]+1)]
-                    answer_ids = tokenizer.convert_tokens_to_ids(ans_piece_tokens)
-                    answer = tokenizer.decode(answer_ids)
-                    ans_tokens_pred = answer.lower().split()             
-                    
-                    # True answer tokens
-                    ans_piece_tokens = all_tokens[y1s[i]: (y2s[i]+1)]
-                    answer_ids = tokenizer.convert_tokens_to_ids(ans_piece_tokens)
-                    answer = tokenizer.decode(answer_ids)
-                    ans_tokens_true = answer.lower().split()
-                    
-                    scores['em'] += utils.metric_em(ans_tokens_pred, ans_tokens_true)
-                    scores['f1'] += utils.metric_f1(ans_tokens_pred, ans_tokens_true)   
+                    if (y1s[i] >= 0) and (y2s[i] >= 0):  # When the answer passage not truncated
+                        # Predicted answer tokens
+                        ans_piece_tokens = all_tokens[s_idxs[i]: (e_idxs[i]+1)]
+                        answer_ids = tokenizer.convert_tokens_to_ids(ans_piece_tokens)
+                        answer = tokenizer.decode(answer_ids)
+                        ans_tokens_pred = answer.lower().split()             
+                        
+                        # True answer tokens
+                        ans_piece_tokens = all_tokens[y1s[i]: (y2s[i]+1)]
+                        answer_ids = tokenizer.convert_tokens_to_ids(ans_piece_tokens)
+                        answer = tokenizer.decode(answer_ids)
+                        ans_tokens_true = answer.lower().split()
+                        
+                        scores['em'] += utils.metric_em(ans_tokens_pred, ans_tokens_true)
+                        scores['f1'] += utils.metric_f1(ans_tokens_pred, ans_tokens_true) 
+
                     n_samples += 1    
                 
                 scores['loss'] += loss.item() 
