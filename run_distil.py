@@ -10,7 +10,7 @@ import json
 import os
 
 from transformers import BertTokenizerFast, BertForQuestionAnswering
-from transformers import DistilBertTokenizerFast, DistilBertForQuestionAnswering  # DistilBertTokenizer
+from transformers import DistilBertTokenizerFast, DistilBertForQuestionAnswering, DistilBertTokenizer
 from transformers import AdamW, get_linear_schedule_with_warmup
 
 
@@ -35,6 +35,7 @@ valid_contexts, valid_questions, valid_answers = read_data(dat['valid'])
 #%% Encodings & Dataset & DataLoader  
 # Define 'Fast' Tokenizer
 if args.pre_wgts == 'distil':
+    # tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')   
     tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')   
 elif args.pre_wgts == 'biobert':
     tokenizer = BertTokenizerFast.from_pretrained('dmis-lab/biobert-v1.1')  
