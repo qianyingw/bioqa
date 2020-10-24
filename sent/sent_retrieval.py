@@ -8,11 +8,12 @@ Created on Sat Oct 24 14:26:50 2020
 
 import json
 
-
+from helper.text_helper import text2tokens
 
 from sentence_transformers import SentenceTransformer, util
 model = SentenceTransformer('distilbert-base-nli-stsb-mean-tokens')
 
+from gensim.summarization.bm25 import BM25
 
 #%%
 class PsyCIPNDataset():
@@ -64,7 +65,22 @@ class PsyCIPNDataset():
             sent_ls = []
             for pair in pairs[:self.max_n_sent]:
                 sent_ls.append(sents[pair['index']])
-         
+                
+        ###### bm25 ######
+        if self.method == 'bm25':
+            
+            sent_tokens = [text2tokens(s) for s in sents]
+            ques_tokens = text2tokens(ques_new)
+            
+            bm25 = BM25(sent_tokens)
+            scores = bm25.get_scores(ques_tokens)
+            scores_dict = dict(zip(range(len(scores)), scores))
+            sorted_idx = sorted(scores_dict, key=scores_dict.get, reverse=True)
+
+            sent_ls = []
+            for sidx in sorted_idx[:self.max_n_sent]:
+                sent_ls.append(sents[sidx])           
+
         return sent_ls
 
         
@@ -72,5 +88,9 @@ class PsyCIPNDataset():
 json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-1052-24102020.json'
 
 PC = PsyCIPNDataset(json_path, max_n_sent=10, method='sbert')
+PC = PsyCIPNDataset(json_path, max_n_sent=10, method='bm25')
 
 temp = PC[0]
+
+
+
