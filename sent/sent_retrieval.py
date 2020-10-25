@@ -37,7 +37,7 @@ class PsyCIPNDataset():
         
         QuesID = self.dat[idx]['QuesID']
         title = self.dat[idx]['title']
-        # answers = self.dat[idx]['answer']
+        answers = self.dat[idx]['answer']
         sents = self.dat[idx]['sentences']
         
         if QuesID.split('_')[1] == 'a':
@@ -81,16 +81,94 @@ class PsyCIPNDataset():
             for sidx in sorted_idx[:self.max_n_sent]:
                 sent_ls.append(sents[sidx])           
 
-        return sent_ls
-
+        return answers, sent_ls
+    
         
+#%%
+def compute_ave_precision(ans_ls, sent_ls, strict=True):
+    '''Compute Average Precision for a single record'''
+        
+    ave_precision = 0
+    n_sent_retrieved = 0
+    n_sent_relevant = 0
+    
+    for sent in sent_ls:              
+        n_sent_retrieved += 1
+        
+        # Check number of answers matched in "sent"
+        n_ans_matched = 0
+        for ans in ans_ls:
+            if ans in sent:
+                n_ans_matched += 1
+                
+        if strict == True:       
+            # "sent" is relevamt only when all answers can be found in the sentence
+            if n_ans_matched == len(ans_ls):
+                n_sent_relevant += 1
+        else:
+            # Rather than 0-1, we use the ratio of matched answers as the approximate value
+            n_sent_relevant = n_ans_matched / len(ans_ls)
+            
+            
+        precision = n_sent_relevant / n_sent_retrieved   
+        ave_precision += precision
+    
+    ave_precision = ave_precision / len(sent_ls)
+              
+    return ave_precision
+
+
+def compute_match_ratio(ans_ls, sent_ls, strict=True):
+    '''Compute answers matched ratio for a single record'''
+    match_ratio = 0
+    n_ans_match = 0
+    text = (" ").join(sent_ls)
+    
+    # Check number of answers matched in "sent"
+    for ans in ans_ls:
+        if ans in text:
+            n_ans_match += 1
+    
+    if strict == True:
+        if n_ans_match == len(ans_ls):
+            match_ratio = 1
+    else:
+        match_ratio = n_ans_match / len(ans_ls)
+              
+    return match_ratio
+
 #%%
 json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-1052-24102020.json'
 
 PC = PsyCIPNDataset(json_path, max_n_sent=10, method='sbert')
 PC = PsyCIPNDataset(json_path, max_n_sent=10, method='bm25')
 
-temp = PC[0]
+mAPs, mAP = 0, 0
+mMRs, mMR = 0, 0
+
+for i in range(len(PC)):
+    ans_ls, sent_ls = PC[i][0], PC[i][1]
+    
+    mAPs += compute_ave_precision(ans_ls, sent_ls, strict=True) 
+    mAP += compute_ave_precision(ans_ls, sent_ls, strict=False)
+    
+    mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
+    mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
+    print(i)
+    
+print("Strict MAP: {.2f}%".format(mAPs/len(PC)*100))
+print("MAP: {.2f}%".format(mAP/len(PC)*100))
+print("Strict MMR: {.2f}%".format(mMRs/len(PC)*100))
+print("MMR: {.2f}%".format(mMR/len(PC)*100))
+
+
+
+
+
+
+
+
+
 
 
 
