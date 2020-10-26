@@ -8,7 +8,14 @@ Created on Sat Oct 24 14:26:50 2020
 
 import json
 
-from helper.text_helper import text2tokens
+# from helper.text_helper import text2tokens
+import spacy
+nlp = spacy.load("en_core_sci_sm")
+def text2tokens(text):
+    tokens = [token.text for token in nlp(text)]
+    return tokens
+    
+
 
 from sentence_transformers import SentenceTransformer, util
 model = SentenceTransformer('distilbert-base-nli-stsb-mean-tokens')
@@ -105,15 +112,19 @@ def compute_ave_precision(ans_ls, sent_ls, strict=True):
             # "sent" is relevamt only when all answers can be found in the sentence
             if n_ans_matched == len(ans_ls):
                 n_sent_relevant += 1
+                precision = n_sent_relevant / n_sent_retrieved
+                ave_precision += precision
         else:
             # Rather than 0-1, we use the ratio of matched answers as the approximate value
-            n_sent_relevant = n_ans_matched / len(ans_ls)
-            
-            
-        precision = n_sent_relevant / n_sent_retrieved   
-        ave_precision += precision
+            if n_ans_matched > 0:
+                n_sent_relevant += n_ans_matched / len(ans_ls)
+                precision = n_sent_relevant / n_sent_retrieved
+                ave_precision += precision
     
-    ave_precision = ave_precision / len(sent_ls)
+    if n_sent_relevant == 0:
+        ave_precision = 0
+    else:
+        ave_precision = ave_precision / n_sent_relevant
               
     return ave_precision
 
@@ -140,7 +151,32 @@ def compute_match_ratio(ans_ls, sent_ls, strict=True):
 #%%
 json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-1052-24102020.json'
 
+
+### SBERT 
 PC = PsyCIPNDataset(json_path, max_n_sent=10, method='sbert')
+
+mAPs, mAP = 0, 0
+mMRs, mMR = 0, 0
+
+for i in range(len(PC)):
+    ans_ls, sent_ls = PC[i][0], PC[i][1]
+    
+    mAPs += compute_ave_precision(ans_ls, sent_ls, strict=True) 
+    mAP += compute_ave_precision(ans_ls, sent_ls, strict=False)
+    
+    mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
+    mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
+    print(i)
+
+print("============ SBERT with 10 sents ============")    
+print("Strict MAP: {:.2f}%".format(mAPs/len(PC)*100))
+print("MAP: {:.2f}%".format(mAP/len(PC)*100))
+print("Strict MMR: {:.2f}%".format(mMRs/len(PC)*100))
+print("MMR: {:.2f}%".format(mMR/len(PC)*100))
+
+
+
+### BM25
 PC = PsyCIPNDataset(json_path, max_n_sent=10, method='bm25')
 
 mAPs, mAP = 0, 0
@@ -155,15 +191,12 @@ for i in range(len(PC)):
     mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
     mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
     print(i)
-    
-print("Strict MAP: {.2f}%".format(mAPs/len(PC)*100))
-print("MAP: {.2f}%".format(mAP/len(PC)*100))
-print("Strict MMR: {.2f}%".format(mMRs/len(PC)*100))
-print("MMR: {.2f}%".format(mMR/len(PC)*100))
 
-
-
-
+print("============ BM25 with 10 sents ============")    
+print("Strict MAP: {:.2f}%".format(mAPs/len(PC)*100))
+print("MAP: {:.2f}%".format(mAP/len(PC)*100))
+print("Strict MMR: {:.2f}%".format(mMRs/len(PC)*100))
+print("MMR: {:.2f}%".format(mMR/len(PC)*100))
 
 
 
