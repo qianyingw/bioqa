@@ -40,6 +40,7 @@ class PsyCIPNDataset():
     def __len__(self):
         return len(self.dat)
     
+    
     def __getitem__(self, idx):
         
         QuesID = self.dat[idx]['QuesID']
@@ -70,8 +71,13 @@ class PsyCIPNDataset():
             pairs = sorted(pairs, key=lambda x: x['score'], reverse=True)
                      
             sent_ls = []
-            for pair in pairs[:self.max_n_sent]:
-                sent_ls.append(sents[pair['index']])
+            if len(sents) > self.max_n_sent:
+                for pair in pairs[:self.max_n_sent]:
+                    sent_ls.append(sents[pair['index']])
+            else:
+                for pair in pairs:
+                    sent_ls.append(sents[pair['index']])
+                
                 
         ###### bm25 ######
         if self.method == 'bm25':
@@ -85,8 +91,13 @@ class PsyCIPNDataset():
             sorted_idx = sorted(scores_dict, key=scores_dict.get, reverse=True)
 
             sent_ls = []
-            for sidx in sorted_idx[:self.max_n_sent]:
-                sent_ls.append(sents[sidx])           
+            if len(sents) > self.max_n_sent:
+                for sidx in sorted_idx[:self.max_n_sent]:
+                    sent_ls.append(sents[sidx])  
+            else:
+                for sidx in sorted_idx:
+                    sent_ls.append(sents[sidx])  
+                
 
         return answers, sent_ls
     
@@ -153,8 +164,7 @@ json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-1052-24102020.json'
 
 
 ### SBERT 
-PC = PsyCIPNDataset(json_path, max_n_sent=10, method='sbert')
-
+PC = PsyCIPNDataset(json_path, max_n_sent=100, method='sbert')
 mAPs, mAP = 0, 0
 mMRs, mMR = 0, 0
 
@@ -168,17 +178,16 @@ for i in range(len(PC)):
     mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
     print(i)
 
-print("============ SBERT with 10 sents ============")    
-print("Strict MAP: {:.2f}%".format(mAPs/len(PC)*100))
-print("MAP: {:.2f}%".format(mAP/len(PC)*100))
-print("Strict MMR: {:.2f}%".format(mMRs/len(PC)*100))
-print("MMR: {:.2f}%".format(mMR/len(PC)*100))
+print("============ SBERT with 100 sents ============")    
+print("Strict MAP: {:.2f}".format(mAPs/len(PC)*100))
+print("MAP: {:.2f}".format(mAP/len(PC)*100))
+print("Strict MMR: {:.2f}".format(mMRs/len(PC)*100))
+print("MMR: {:.2f}".format(mMR/len(PC)*100))
 
 
 
 ### BM25
-PC = PsyCIPNDataset(json_path, max_n_sent=10, method='bm25')
-
+PC = PsyCIPNDataset(json_path, max_n_sent=40, method='bm25')
 mAPs, mAP = 0, 0
 mMRs, mMR = 0, 0
 
@@ -190,18 +199,12 @@ for i in range(len(PC)):
     
     mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
     mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
-    print(i)
+    # print(i)
 
-print("============ BM25 with 10 sents ============")    
-print("Strict MAP: {:.2f}%".format(mAPs/len(PC)*100))
-print("MAP: {:.2f}%".format(mAP/len(PC)*100))
-print("Strict MMR: {:.2f}%".format(mMRs/len(PC)*100))
-print("MMR: {:.2f}%".format(mMR/len(PC)*100))
-
-
-
-
-
-
+print("============ BM25 with 40 sents ============")    
+print("Strict MAP: {:.2f}".format(mAPs/len(PC)*100))
+print("MAP: {:.2f}".format(mAP/len(PC)*100))
+print("Strict MMR: {:.2f}".format(mMRs/len(PC)*100))
+print("MMR: {:.2f}".format(mMR/len(PC)*100))
 
 
