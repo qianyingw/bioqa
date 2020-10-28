@@ -7,7 +7,7 @@ Created on Sat Oct 24 14:26:50 2020
 """
 
 import json
-
+import re
 # from helper.text_helper import text2tokens
 import spacy
 nlp = spacy.load("en_core_sci_sm")
@@ -116,7 +116,9 @@ def compute_ave_precision(ans_ls, sent_ls, strict=True):
         # Check number of answers matched in "sent"
         n_ans_matched = 0
         for ans in ans_ls:
-            if ans in sent:
+            # if ans in sent:
+            matches = re.findall(r'\b'+re.escape(ans)+r'\b', sent, re.MULTILINE)
+            if len(matches) > 0:         
                 n_ans_matched += 1
                 
         if strict == True:       
@@ -148,7 +150,9 @@ def compute_match_ratio(ans_ls, sent_ls, strict=True):
     
     # Check number of answers matched in "sent"
     for ans in ans_ls:
-        if ans in text:
+        # if ans in text:
+        matches = re.findall(r'\b'+re.escape(ans)+r'\b', text, re.MULTILINE)
+        if len(matches) > 0:
             n_ans_match += 1
     
     if strict == True:
@@ -160,51 +164,98 @@ def compute_match_ratio(ans_ls, sent_ls, strict=True):
     return match_ratio
 
 #%%
-json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-1052-24102020.json'
-
+# json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-992-24102020.json'
+json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-679-factoid-28102020.json'
+# json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-313-28102020.json'
 
 ### SBERT 
-PC = PsyCIPNDataset(json_path, max_n_sent=100, method='sbert')
+PC = PsyCIPNDataset(json_path, max_n_sent=20, method='sbert')
 mAPs, mAP = 0, 0
 mMRs, mMR = 0, 0
-
 for i in range(len(PC)):
     ans_ls, sent_ls = PC[i][0], PC[i][1]
-    
     mAPs += compute_ave_precision(ans_ls, sent_ls, strict=True) 
-    mAP += compute_ave_precision(ans_ls, sent_ls, strict=False)
-    
-    mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
-    mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
-    print(i)
-
-print("============ SBERT with 100 sents ============")    
-print("Strict MAP: {:.2f}".format(mAPs/len(PC)*100))
-print("MAP: {:.2f}".format(mAP/len(PC)*100))
-print("Strict MMR: {:.2f}".format(mMRs/len(PC)*100))
-print("MMR: {:.2f}".format(mMR/len(PC)*100))
-
-
-
-### BM25
-PC = PsyCIPNDataset(json_path, max_n_sent=40, method='bm25')
-mAPs, mAP = 0, 0
-mMRs, mMR = 0, 0
-
-for i in range(len(PC)):
-    ans_ls, sent_ls = PC[i][0], PC[i][1]
-    
-    mAPs += compute_ave_precision(ans_ls, sent_ls, strict=True) 
-    mAP += compute_ave_precision(ans_ls, sent_ls, strict=False)
-    
+    mAP += compute_ave_precision(ans_ls, sent_ls, strict=False)  
     mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
     mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
     # print(i)
+print("============ SBERT with 20 sents ============")    
+print("[sMAP|MAP|sMMR|MMR]: {0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}".format(mAPs/len(PC)*100, mAP/len(PC)*100, mMRs/len(PC)*100, mMR/len(PC)*100))
 
-print("============ BM25 with 40 sents ============")    
-print("Strict MAP: {:.2f}".format(mAPs/len(PC)*100))
-print("MAP: {:.2f}".format(mAP/len(PC)*100))
-print("Strict MMR: {:.2f}".format(mMRs/len(PC)*100))
-print("MMR: {:.2f}".format(mMR/len(PC)*100))
+
+
+PC = PsyCIPNDataset(json_path, max_n_sent=40, method='sbert')
+mAPs, mAP = 0, 0
+mMRs, mMR = 0, 0
+for i in range(len(PC)):
+    ans_ls, sent_ls = PC[i][0], PC[i][1]
+    mAPs += compute_ave_precision(ans_ls, sent_ls, strict=True) 
+    mAP += compute_ave_precision(ans_ls, sent_ls, strict=False)  
+    mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
+    mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
+    # print(i)
+print("============ SBERT with 40 sents ============")    
+print("[sMAP|MAP|sMMR|MMR]: {0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}".format(mAPs/len(PC)*100, mAP/len(PC)*100, mMRs/len(PC)*100, mMR/len(PC)*100))
+
+
+
+PC = PsyCIPNDataset(json_path, max_n_sent=60, method='sbert')
+mAPs, mAP = 0, 0
+mMRs, mMR = 0, 0
+for i in range(len(PC)):
+    ans_ls, sent_ls = PC[i][0], PC[i][1]
+    mAPs += compute_ave_precision(ans_ls, sent_ls, strict=True) 
+    mAP += compute_ave_precision(ans_ls, sent_ls, strict=False)  
+    mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
+    mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
+    # print(i)
+print("============ SBERT with 60 sents ============")    
+print("[sMAP|MAP|sMMR|MMR]: {0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}".format(mAPs/len(PC)*100, mAP/len(PC)*100, mMRs/len(PC)*100, mMR/len(PC)*100))
+
+
+
+PC = PsyCIPNDataset(json_path, max_n_sent=80, method='sbert')
+mAPs, mAP = 0, 0
+mMRs, mMR = 0, 0
+for i in range(len(PC)):
+    ans_ls, sent_ls = PC[i][0], PC[i][1]
+    mAPs += compute_ave_precision(ans_ls, sent_ls, strict=True) 
+    mAP += compute_ave_precision(ans_ls, sent_ls, strict=False)  
+    mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
+    mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
+    # print(i)
+print("============ SBERT with 80 sents ============")    
+print("[sMAP|MAP|sMMR|MMR]: {0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}".format(mAPs/len(PC)*100, mAP/len(PC)*100, mMRs/len(PC)*100, mMR/len(PC)*100))
+
+
+
+PC = PsyCIPNDataset(json_path, max_n_sent=100, method='sbert')
+mAPs, mAP = 0, 0
+mMRs, mMR = 0, 0
+for i in range(len(PC)):
+    ans_ls, sent_ls = PC[i][0], PC[i][1]
+    mAPs += compute_ave_precision(ans_ls, sent_ls, strict=True) 
+    mAP += compute_ave_precision(ans_ls, sent_ls, strict=False)  
+    mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
+    mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
+    # print(i)
+print("============ SBERT with 100 sents ============")    
+print("[sMAP|MAP|sMMR|MMR]: {0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}".format(mAPs/len(PC)*100, mAP/len(PC)*100, mMRs/len(PC)*100, mMR/len(PC)*100))
+
+
+
+PC = PsyCIPNDataset(json_path, max_n_sent=120, method='sbert')
+mAPs, mAP = 0, 0
+mMRs, mMR = 0, 0
+for i in range(len(PC)):
+    ans_ls, sent_ls = PC[i][0], PC[i][1]
+    mAPs += compute_ave_precision(ans_ls, sent_ls, strict=True) 
+    mAP += compute_ave_precision(ans_ls, sent_ls, strict=False)  
+    mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
+    mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
+    # print(i)
+print("============ SBERT with 120 sents ============")    
+print("[sMAP|MAP|sMMR|MMR]: {0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}".format(mAPs/len(PC)*100, mAP/len(PC)*100, mMRs/len(PC)*100, mMR/len(PC)*100))
+
 
 
