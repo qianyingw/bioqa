@@ -9,18 +9,27 @@ Created on Sat Oct 24 14:26:50 2020
 import json
 import re
 # from helper.text_helper import text2tokens
-import spacy
-nlp = spacy.load("en_core_sci_sm")
-def text2tokens(text):
-    tokens = [token.text for token in nlp(text)]
-    return tokens
-    
 
-
+import torch
 from sentence_transformers import SentenceTransformer, util
 model = SentenceTransformer('distilbert-base-nli-stsb-mean-tokens')
 
 from gensim.summarization.bm25 import BM25
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+tfidf_transformer = TfidfTransformer(smooth_idf=False)
+
+import spacy
+from spacy.lang.en.stop_words import STOP_WORDS
+nlp = spacy.load("en_core_sci_sm")
+
+def text2tokens(text):
+    tokens = [token.text for token in nlp(text)]
+    return tokens
+    
+def spacy_tokenizer(text):
+    tokens = [token.text for token in nlp(text) if not token.is_punct]
+    tokens = [t for t in tokens if t not in STOP_WORDS]
+    return tokens
 
 #%%
 class PsyCIPNDataset():
@@ -77,7 +86,30 @@ class PsyCIPNDataset():
             else:
                 for pair in pairs:
                     sent_ls.append(sents[pair['index']])
-                
+        
+        
+        ###### bigram-tfidf similarity ######
+        if self.method == 'tfidf':
+            sents_ques = sents + [ques_new]
+            vectorizer = CountVectorizer(ngram_range=(1,2), tokenizer=spacy_tokenizer, min_df=1)
+            sents_ques_vec = tfidf_transformer.fit_transform(vectorizer.fit_transform(sents_ques)).toarray()
+            
+            sents_vec = torch.from_numpy(sents_ques_vec[:-1]).float()
+            ques_vec = torch.from_numpy(sents_ques_vec[-1]).float()
+            cosine_scores = util.pytorch_cos_sim(sents_vec, ques_vec)
+            
+            pairs = []
+            for i in range(cosine_scores.shape[0]):
+                pairs.append({'index': i, 'score': cosine_scores[i][0]})
+            pairs = sorted(pairs, key=lambda x: x['score'], reverse=True)
+                     
+            sent_ls = []
+            if len(sents) > self.max_n_sent:
+                for pair in pairs[:self.max_n_sent]:
+                    sent_ls.append(sents[pair['index']])
+            else:
+                for pair in pairs:
+                    sent_ls.append(sents[pair['index']])
                 
         ###### bm25 ######
         if self.method == 'bm25':
@@ -166,10 +198,30 @@ def compute_match_ratio(ans_ls, sent_ls, strict=True):
 #%%
 # json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-992-24102020.json'
 json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-679-factoid-28102020.json'
-# json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-313-28102020.json'
+# json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-313-list-28102020.json'
 
-### SBERT 
-PC = PsyCIPNDataset(json_path, max_n_sent=20, method='sbert')
+import time
+start = time.time()
+PC = PsyCIPNDataset(json_path, max_n_sent=40, method='tfidf')
+# PC = PsyCIPNDataset(json_path, max_n_sent=150, method='sbert')
+mAPs, mAP = 0, 0
+mMRs, mMR = 0, 0
+for i in range(len(PC)):
+    ans_ls, sent_ls = PC[i][0], PC[i][1]
+    mAPs += compute_ave_precision(ans_ls, sent_ls, strict=True) 
+    mAP += compute_ave_precision(ans_ls, sent_ls, strict=False)  
+    mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
+    mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
+    print(i)
+print("Time elapsed: {} mins".format((time.time()-start)/60))
+print("============ tfidf with 40 sents ============")    
+print("[sMAP|MAP|sMMR|MMR]: {0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}".format(mAPs/len(PC)*100, mAP/len(PC)*100, mMRs/len(PC)*100, mMR/len(PC)*100))
+
+#%%
+print("============ List type records ============")  
+json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-313-list-28102020.json'
+
+PC = PsyCIPNDataset(json_path, max_n_sent=150, method='sbert')
 mAPs, mAP = 0, 0
 mMRs, mMR = 0, 0
 for i in range(len(PC)):
@@ -179,6 +231,5 @@ for i in range(len(PC)):
     mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
     mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
     # print(i)
-print("============ SBERT with 20 sents ============")    
+print("============ SBERT with 150 sents ============")    
 print("[sMAP|MAP|sMMR|MMR]: {0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}".format(mAPs/len(PC)*100, mAP/len(PC)*100, mMRs/len(PC)*100, mMR/len(PC)*100))
-
