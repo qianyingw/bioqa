@@ -149,7 +149,7 @@ def compute_ave_precision(ans_ls, sent_ls, strict=True):
         n_ans_matched = 0
         for ans in ans_ls:
             # if ans in sent:
-            matches = re.findall(r'\b'+re.escape(ans)+r'\b', sent, re.MULTILINE)
+            matches = re.findall(r'\b'+re.escape(ans)+r'\b', sent, re.MULTILINE | re.IGNORECASE)
             if len(matches) > 0:         
                 n_ans_matched += 1
                 
@@ -183,7 +183,8 @@ def compute_match_ratio(ans_ls, sent_ls, strict=True):
     # Check number of answers matched in "sent"
     for ans in ans_ls:
         # if ans in text:
-        matches = re.findall(r'\b'+re.escape(ans)+r'\b', text, re.MULTILINE)
+        # matches = re.findall(r'\b'+re.escape(ans)+r'\b', text, re.MULTILINE)
+        matches = re.findall(r'\b'+re.escape(ans)+r'\b', text, re.MULTILINE | re.IGNORECASE)
         if len(matches) > 0:
             n_ans_match += 1
     
@@ -202,34 +203,14 @@ json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-679-factoid-2810202
 
 import time
 start = time.time()
-PC = PsyCIPNDataset(json_path, max_n_sent=40, method='tfidf')
-# PC = PsyCIPNDataset(json_path, max_n_sent=150, method='sbert')
-mAPs, mAP = 0, 0
-mMRs, mMR = 0, 0
+PC = PsyCIPNDataset(json_path, max_n_sent=120, method='bm25')
+mAPs, mAP, mMRs, mMR = 0, 0, 0, 0
 for i in range(len(PC)):
     ans_ls, sent_ls = PC[i][0], PC[i][1]
     mAPs += compute_ave_precision(ans_ls, sent_ls, strict=True) 
     mAP += compute_ave_precision(ans_ls, sent_ls, strict=False)  
     mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
-    mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
+    mMR += compute_match_ratio(ans_ls, sent_ls, strict=False) 
     print(i)
-print("Time elapsed: {} mins".format((time.time()-start)/60))
-print("============ tfidf with 40 sents ============")    
-print("[sMAP|MAP|sMMR|MMR]: {0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}".format(mAPs/len(PC)*100, mAP/len(PC)*100, mMRs/len(PC)*100, mMR/len(PC)*100))
-
-#%%
-print("============ List type records ============")  
-json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-313-list-28102020.json'
-
-PC = PsyCIPNDataset(json_path, max_n_sent=150, method='sbert')
-mAPs, mAP = 0, 0
-mMRs, mMR = 0, 0
-for i in range(len(PC)):
-    ans_ls, sent_ls = PC[i][0], PC[i][1]
-    mAPs += compute_ave_precision(ans_ls, sent_ls, strict=True) 
-    mAP += compute_ave_precision(ans_ls, sent_ls, strict=False)  
-    mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
-    mMR += compute_match_ratio(ans_ls, sent_ls, strict=False)
-    # print(i)
-print("============ SBERT with 150 sents ============")    
-print("[sMAP|MAP|sMMR|MMR]: {0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}".format(mAPs/len(PC)*100, mAP/len(PC)*100, mMRs/len(PC)*100, mMR/len(PC)*100))
+print("[sMAP|MAP|sMMR|MMR]-120: |{0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}".format(mAPs/len(PC)*100, mAP/len(PC)*100, mMRs/len(PC)*100, mMR/len(PC)*100))
+print("Time elapsed: {} mins".format((time.time()-start)/60))  
