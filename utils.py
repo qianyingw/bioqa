@@ -106,7 +106,7 @@ def metric_em(pred_tokens, true_tokens):
 
 
 
-def metric_f1pr(pred_tokens, true_tokens):
+def metric_f1_pr(pred_tokens, true_tokens):
     common = Counter(true_tokens) & Counter(pred_tokens)    
     num_same = sum(common.values())  
     precision = 1.0 * num_same / len(pred_tokens)
