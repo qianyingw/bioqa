@@ -10,12 +10,12 @@ Created on Fri Oct 30 16:49:24 2020
 import json
 import re
 
-import torch
+# import torch
+# from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+# tfidf_transformer = TfidfTransformer(smooth_idf=False)
 
-from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-tfidf_transformer = TfidfTransformer(smooth_idf=False)
-
-from sentence_transformers import util
+from sentence_transformers import SentenceTransformer, util
+sent_model = SentenceTransformer('distilbert-base-nli-stsb-mean-tokens')
 
 import spacy
 from spacy.lang.en.stop_words import STOP_WORDS
@@ -47,16 +47,16 @@ def add_ans_char_pos(data_list, max_n_sent):
         else:
             ques = 'What is the intervention?'
               
-        ## Extract most similar sents by bigram-tfidf
-        ques_new = ques + ' ' + ls['title']
-        sents_ques = sents + [ques_new]
-        vectorizer = CountVectorizer(ngram_range=(1,2), tokenizer=spacy_tokenizer, min_df=1)
-        sents_ques_vec = tfidf_transformer.fit_transform(vectorizer.fit_transform(sents_ques)).toarray()
+        ## Extract most similar sents by sentence-bert
+        ques_new = ques + ' ' + ls['title']      
         
-        sents_vec = torch.from_numpy(sents_ques_vec[:-1]).float()
-        ques_vec = torch.from_numpy(sents_ques_vec[-1]).float()
-        cosine_scores = util.pytorch_cos_sim(sents_vec, ques_vec)
+        sent_embeds = sent_model.encode(sents, convert_to_tensor=True)
+        ques_embed = sent_model.encode([ques_new], convert_to_tensor=True)
+
+        # Compute cosine-similarities for each sent with other sents
+        cosine_scores = util.pytorch_cos_sim(sent_embeds, ques_embed)
         
+        # Find the pairs with the highest cosine similarity scores
         pairs = []
         for i in range(cosine_scores.shape[0]):
             pairs.append({'index': i, 'score': cosine_scores[i][0]})
@@ -89,8 +89,7 @@ def add_ans_char_pos(data_list, max_n_sent):
                   "PubID": ls['PubID'],
                   "title": ls['title'],
                   "question": ques,
-                  "answer": ls['answer'][0],
-                  "answer_start": ans_start,
+                  "answers": [{"text": ls['answer'], "answer_start": int(ans_start)}],
                   "context": context,
                   "group": ls['group']}
         new_list.append(record)
@@ -98,5 +97,19 @@ def add_ans_char_pos(data_list, max_n_sent):
     return new_list
 
 
-
+#%%
+with open('/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-796-factoid-30102020.json') as fin:
+    dat = json.load(fin)   
     
+
+dat_new = add_ans_char_pos(dat, max_n_sent=20)  # 33mins
+with open("/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-20s-02112020.json", 'w') as fout:
+    fout.write(json.dumps(dat_new))
+
+dat_new = add_ans_char_pos(dat, max_n_sent=40)
+with open("/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-40s-02112020.json", 'w') as fout:
+    fout.write(json.dumps(dat_new))
+    
+dat_new = add_ans_char_pos(dat, max_n_sent=60)  # 33mins
+with open("/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-60s-02112020.json", 'w') as fout:
+    fout.write(json.dumps(dat_new))
