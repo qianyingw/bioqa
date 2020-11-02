@@ -106,16 +106,16 @@ def metric_em(pred_tokens, true_tokens):
 
 
 
-def metric_f1(pred_tokens, true_tokens):
+def metric_f1pr(pred_tokens, true_tokens):
     common = Counter(true_tokens) & Counter(pred_tokens)    
     num_same = sum(common.values())  
+    precision = 1.0 * num_same / len(pred_tokens)
+    recall = 1.0 * num_same / len(true_tokens)
     if num_same != 0:
-        precision = 1.0 * num_same / len(pred_tokens)
-        recall = 1.0 * num_same / len(true_tokens)
         f1 = (2 * precision * recall) / (precision + recall)
     else:
         f1 = 0
-    return f1
+    return f1, precision, recall
 
 
 #%%
