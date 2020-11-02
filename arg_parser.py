@@ -10,8 +10,6 @@ Created on Thu Aug 13 12:57:47 2020
 import argparse
 import json
 import os
-import sys
-
 
 USER = os.getenv('USER')
 
@@ -33,16 +31,18 @@ def get_args():
     parser.add_argument('--batch_size', nargs="?", type=int, default=32, help='Batch size')
     parser.add_argument('--num_epochs', nargs="?", type=int, default=20, help='Number of epochs')    
     parser.add_argument('--args_json_path', nargs="?", type=str, default=None, help='Path of argument json file') 
-    parser.add_argument('--exp_dir', nargs="?", type=str, default="/home/qwang/bioqa/exps/intervention/pubmed-full", help='Folder of the experiment')
+    parser.add_argument('--exp_dir', nargs="?", type=str, default="/home/qwang/bioqa/exps/pci/distil", help='Folder of the experiment')
     parser.add_argument('--clip', nargs="?", type=float, default=0.1, help='Gradient clipping')
     parser.add_argument('--accum_step', nargs="?", type=int, default=4, help='Number of steps for gradient accumulation')
     parser.add_argument('--warm_frac', nargs="?", type=float, default=0.1, help='Fraction of iterations when lr increased')
-    parser.add_argument('--save_model', nargs="?", type=str2bool, default=True, help='Save model.pth.tar with best loss')   
+    parser.add_argument('--save_model', nargs="?", type=str2bool, default=False, help='Save model.pth.tar with best loss')   
        
     # Data and embedding
-    parser.add_argument('--data_dir', nargs="?", type=str, default="/media/mynewdrive/bioqa/mnd/intervention", help='Folder containing json data')
-    parser.add_argument('--data_name', nargs="?", type=str, default="MND-Intervention-1983-06Aug20.json", help='Json file name')
-    parser.add_argument('--pre_wgts', nargs="?", type=str, default="pubmed-full", 
+    parser.add_argument('--data_path', nargs="?", type=str,
+                        default="/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-20s-02112020.json",
+                        # default="/media/mynewdrive/bioqa/mnd/intervention/MND-Intervention-1983-06Aug20.json", 
+                        help='Path of json data')
+    parser.add_argument('--pre_wgts', nargs="?", type=str, default="distil", 
                         choices=['distil', 'bert', 'biobert', 'pubmed-full', 'pubmed-abs'],
                         help='Pre-trained model name')
     parser.add_argument('--embed_path', nargs="?", type=str, default="/media/mynewdrive/rob/wordvec/wikipedia-pubmed-and-PMC-w2v.txt", help='Path of pre-trained vectors')    
@@ -53,7 +53,7 @@ def get_args():
       
     # Model
     parser.add_argument('--hidden_dim', nargs="?", type=int, default=64, help='Number of features in RNN hidden state')
-    parser.add_argument('--num_layers', nargs="?", type=int, default=1, help='Number of recurrent layers')
+    parser.add_argument('--num_layers', nargs="?", type=int, default=2, help='Number of recurrent layers')
     parser.add_argument('--dropout', nargs="?", type=float, default=0.5, help='Dropout rate')
 
    
