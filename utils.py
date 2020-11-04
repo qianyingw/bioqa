@@ -92,6 +92,51 @@ def get_ans_idx(p_s, p_e, max_len=15, no_answer=False):
 
     return s_idxs, e_idxs
 
+#%%
+def get_ans_list_idx(p_s, p_e, max_len=15, num_answer=5):
+    """
+    Discretize soft predictions (probs) to get start and end indices
+    Choose top [num_answer] pairs of (i, j) which maximize p1[i]*p2[j], s.t. (i <= j) & (j-i+1 <= max_len)
+    Args:
+        p_s: [batch_size, c_len], probs for start index
+        p_e: [batch_size, c_len], probs for end index
+        max_len: max length of the answer prediction
+        num_answers: number of candidate answers returned 
+        
+    Returns:
+        s_idxs:  [batch_size, num_answer], hard predictions for start index
+        e_idxs: [batch_size, num_answer], hard predictions for end index
+        
+    """
+    c_len = p_s.shape[1]
+    device = p_s.device
+    
+    if p_s.min() < 0 or p_s.max() > 1 or p_e.min() < 0 or p_e.max() > 1:
+        raise ValueError('Expected p_start and p_end to have values in [0, 1]')
+
+    # Compute pairwise probs
+    p_s = p_s.unsqueeze(2)  # [batch_size, c_len, 1]
+    p_e = p_e.unsqueeze(1)  # [batch_size, 1, c_len]    
+    p_join = torch.bmm(p_s, p_e)  # [batch_size, c_len, c_len]
+
+    # Restrict (i, j) s.t. (i <= j) & (j-i+1 <= max_len)
+    is_legal_pair = torch.triu(torch.ones((c_len, c_len), device=device))
+    is_legal_pair = is_legal_pair - torch.triu(torch.ones((c_len, c_len), device=device), diagonal=max_len)
+    p_join = p_join * is_legal_pair
+
+    # Obtain top [num_answer] pairs of (i, j) which maximize p_join
+    _, flat_idxs = torch.topk(torch.flatten(p_join, start_dim=1), num_answer)  # [batch_size, num_answer]
+    
+    s_idxs, e_idxs = [], []
+    for fidx in flat_idxs:
+        idxs = torch.tensor(np.unravel_index(fidx.numpy(), p_join.shape[1:]))  # [2, num_answer]
+        s_idxs.append(idxs[0])  # idxs[0]: [num_answer]
+        e_idxs.append(idxs[1])  # idxs[1]: [num_answer]
+    s_idxs = torch.stack(s_idxs)    # [batch_size, num_answer]
+    e_idxs = torch.stack(e_idxs)    # [batch_size, num_answer]    
+
+    return s_idxs, e_idxs
+
 
 #%%
 def metric_em(pred_tokens, true_tokens):    
@@ -105,8 +150,10 @@ def metric_em(pred_tokens, true_tokens):
     return em
 
 
-
 def metric_f1_pr(pred_tokens, true_tokens):
+    """
+        Calculate F1, Precision, Recall
+    """
     common = Counter(true_tokens) & Counter(pred_tokens)    
     num_same = sum(common.values())  
     precision = 1.0 * num_same / len(pred_tokens)
@@ -117,6 +164,27 @@ def metric_f1_pr(pred_tokens, true_tokens):
         f1 = 0
     return f1, precision, recall
 
+
+def metric_rr(pred_tokens_list, true_tokens):
+    """
+        Calculate Reciprocal Rank
+        pred_tokens_list: list of pred_tokens candidates
+        Example:
+            pred_tokens_list = [['catten'], ['black', 'cat'], ['cats']]
+            true_tokens = ['black', 'cat']
+            RR = 1/2
+    """
+    rank, reciprocal_rank = 0, 0
+    candidate_count = 0
+    for pred_tokens in pred_tokens_list:
+        candidate_count += 1
+        if pred_tokens == true_tokens:
+            rank = candidate_count
+            break
+        
+    if rank != 0:      
+        reciprocal_rank = 1 / rank      
+    return reciprocal_rank
 
 #%%
 def ans_idx_to_tokens(context_idxs, s, e, MND):
