@@ -41,6 +41,7 @@ torch.backends.cudnn.benchmark = False   # will be slower
 #     'warm_frac': 0.1
 #     }    
 
+args.data_path = "/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-60s-02112020.json"
 with open(args.data_path) as fin:
     dat = json.load(fin)    
 
@@ -64,8 +65,8 @@ valid_contexts, valid_questions, valid_answers = read_data(dat_valid)
 # Define 'Fast' Tokenizer
 tokenizer = LongformerTokenizerFast.from_pretrained('allenai/longformer-base-4096')
 
-train_encodings = char2token_encodings(train_contexts, train_questions, train_answers, tokenizer, truncation=False)
-valid_encodings = char2token_encodings(valid_contexts, valid_questions, valid_answers, tokenizer, truncation=False)
+train_encodings = char2token_encodings(train_contexts, train_questions, train_answers, tokenizer, truncation=False, max_len=4096)
+valid_encodings = char2token_encodings(valid_contexts, valid_questions, valid_answers, tokenizer, truncation=False, max_len=4096)
 
 train_dataset = EncodingDataset(train_encodings)
 valid_dataset = EncodingDataset(valid_encodings)
@@ -76,6 +77,7 @@ valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=Tru
 
 #%% Model & Optimizer & Scheduler
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+args.wgts_dir = '/media/mynewdrive/rob/data/pre_wgts/longformer_base'
 model = LongformerForQuestionAnswering.from_pretrained(args.wgts_dir)
 # model = LongformerForQuestionAnswering.from_pretrained("allenai/longformer-base-4096")
 model.to(device)
@@ -86,7 +88,7 @@ optimizer = AdamW(model.parameters(), lr=5e-5)
 total_steps = len(train_loader) * args.num_epochs // args.accum_step
 warm_steps = int(total_steps * args.warm_frac)
 scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warm_steps, num_training_steps=total_steps)
-print('done')
+
 
 #%% Train the model
 if os.path.exists(args.exp_dir) == False:
@@ -98,7 +100,7 @@ output_dict = {'args': vars(args), 'prfs': {}}
 # For early stopping
 n_worse = 0
 min_valid_loss = float('inf')
-max_valid_f1 = float(-'inf')
+max_valid_f1 = float('-inf')
 for epoch in range(args.num_epochs):   
     train_scores = train_fn(model, train_loader, optimizer, scheduler, tokenizer, args.clip, args.accum_step, device)
     valid_scores = valid_fn(model, valid_loader, tokenizer, device)
