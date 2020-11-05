@@ -19,9 +19,13 @@ import torch.optim as optim
 
 from arg_parser import get_args
 import utils
-from data_loader import MNDIterators
-from model import BiDAF
-from train import train, evaluate
+
+import helper.helper_psycipn as helper_psycipn
+import helper.helper_mnd as helper_mnd
+
+from bidaf.data_loader import BaselineIterators
+from bidaf.model import BiDAF
+from bidaf.train import train_fn, valid_fn
 
 
 #%% Get arguments from command line
@@ -45,14 +49,23 @@ else:
     device = torch.device('cpu')     
 
 #%% Load data and create iterators
-MND = MNDIterators(vars(args))
-train_data, valid_data, test_data = MND.create_data()
-train_iter, valid_iter, test_iter = MND.create_iterators(train_data, valid_data, test_data)
+# args.data_path = "/media/mynewdrive/bioqa/mnd/intervention/MND-Intervention-1983-06Aug20.json" 
+args.data_path = "/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-20s-02112020.json"
+
+BaseIter = BaselineIterators(vars(args))
+# if os.path.basename(args.data_path).split('-')[0] == 'PsyCIPN':
+#     BaseIter.process_data(process_fn = helper_psycipn.process_for_baseline)
+# if os.path.basename(args.data_path).split('-')[0] == 'MND':
+#     BaseIter.process_data(process_fn = helper_mnd.process_for_baseline)
+    
+train_data, valid_data, test_data = BaseIter.create_data()
+train_iter, valid_iter, test_iter = BaseIter.create_iterators(train_data, valid_data, test_data)
+
  
 #%% Define the model
-vocab_size = len(MND.TEXT.vocab)  
-unk_idx = MND.TEXT.vocab.stoi[MND.TEXT.unk_token]  # 0
-pad_idx = MND.TEXT.vocab.stoi[MND.TEXT.pad_token]  # 1
+vocab_size = len(BaseIter.TEXT.vocab)  
+unk_idx = BaseIter.TEXT.vocab.stoi[BaseIter.TEXT.unk_token]  # 0
+pad_idx = BaseIter.TEXT.vocab.stoi[BaseIter.TEXT.pad_token]  # 1
 
 model = BiDAF(vocab_size = vocab_size,
               embed_dim = args.embed_dim, 
@@ -61,12 +74,12 @@ model = BiDAF(vocab_size = vocab_size,
               dropout = args.dropout, 
               pad_idx = pad_idx)
 
-n_pars = sum(p.numel() for p in model.parameters())
+# n_pars = sum(p.numel() for p in model.parameters())
 # print(model)
 # print("Number of parameters: {}".format(n_pars))
 
 #%% Load pre-trained embedding
-pretrained_embeddings = MND.TEXT.vocab.vectors
+pretrained_embeddings = BaseIter.TEXT.vocab.vectors
 
 model.embedding.weight.data.copy_(pretrained_embeddings)
 model.embedding.weight.data[unk_idx] = torch.zeros(args.embed_dim)  # Zero the initial weights for <unk> tokens
@@ -76,14 +89,15 @@ del pretrained_embeddings
 
 
 #%% Define the optimizer & scheduler
-optimizer = optim.Adam(model.parameters(1e-4))   
+# optimizer = optim.Adam(model.parameters(1e-4))
+optimizer = optim.AdamW(model.parameters(), lr=5e-5)  
+ 
 if torch.cuda.device_count() > 1:  # multiple GPUs
     model = nn.DataParallel(module=model)
 model = model.to(device)
 
 # Slanted triangular Learning rate scheduler
 from transformers import get_linear_schedule_with_warmup
-# total_steps = len(train_loader) * 9 // args.accum_step  # change n_epochs to total #epochs for resuming training
 total_steps = len(train_iter) * args.num_epochs // args.accum_step
 warm_steps = int(total_steps * args.warm_frac)
 scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warm_steps, num_training_steps=total_steps)
@@ -98,23 +112,23 @@ output_dict = {'args': vars(args), 'prfs': {}}
 # For early stopping
 n_worse = 0
 min_valid_loss = float('inf')
+max_valid_f1 = float('-inf')
 
 for epoch in range(args.num_epochs):   
-    train_scores = train(model, MND, train_iter, optimizer, scheduler, args.clip, args.accum_step)
-    valid_scores = evaluate(model, MND, valid_iter)        
+    train_scores = train_fn(model, BaseIter, train_iter, optimizer, scheduler, args.clip, args.accum_step)
+    valid_scores = valid_fn(model, BaseIter, valid_iter)        
 
     # Update output dictionary
     output_dict['prfs'][str('train_'+str(epoch+1))] = train_scores
     output_dict['prfs'][str('valid_'+str(epoch+1))] = valid_scores
        
     # Save scores
-    if valid_scores['loss'] < min_valid_loss:
-        min_valid_loss = valid_scores['loss']    
-    # if valid_scores['f1'] > max_valid_f1:
-    #     max_valid_f1 = valid_scores['f1'] 
-        
-    is_best = (valid_scores['loss']-min_valid_loss <= 0) # args.stop_c1) and (max_valid_f1-valid_scores['f1'] <= args.stop_c2)
-    if is_best == True:       
+    # if valid_scores['loss'] < min_valid_loss:
+    #     min_valid_loss = valid_scores['loss']    
+    is_best = (valid_scores['f1'] > max_valid_f1)
+    
+    if is_best == True:   
+        max_valid_f1 = valid_scores['f1'] 
         utils.save_dict_to_json(valid_scores, os.path.join(args.exp_dir, 'best_val_scores.json'))
     
     # Save model
@@ -124,9 +138,11 @@ for epoch in range(args.num_epochs):
                                'optim_Dict': optimizer.state_dict()},
                                is_best = is_best, checkdir = args.exp_dir)
     
-    print("\n\nEpoch {}/{}...".format(epoch+1, args.num_epochs))                       
-    print('[Train] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}%'.format(train_scores['loss'], train_scores['em']*100, train_scores['f1']*100))
-    print('[Valid] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}%\n'.format(valid_scores['loss'], valid_scores['em']*100, valid_scores['f1']*100))
+    print("\n\nEpoch {}/{}...".format(epoch+1, args.num_epochs))
+    print('[Train] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}% | prec: {3:.2f}% | rec: {4:.2f}%'.format(
+        train_scores['loss'], train_scores['em']*100, train_scores['f1']*100, train_scores['prec']*100, train_scores['rec']*100))
+    print('[Valid] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}% | prec: {3:.2f}% | rec: {4:.2f}%\n'.format(
+        valid_scores['loss'], valid_scores['em']*100, valid_scores['f1']*100, valid_scores['prec']*100, valid_scores['rec']*100))
     
     # Early stopping             
     # if valid_scores['loss']-min_valid_loss > 0: # args.stop_c1) and (max_valid_f1-valid_scores['f1'] > args.stop_c2):
