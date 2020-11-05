@@ -187,28 +187,29 @@ def metric_rr(pred_tokens_list, true_tokens):
     return reciprocal_rank
 
 #%%
-def ans_idx_to_tokens(context_idxs, s, e, MND):
+def ans_idx_to_tokens(context_idxs, s_idx, e_idx, BaseIter):
     """
+    For baseline models
     Convert "answer idx of context" to "answer tokens" for a single record
     Input:
         context_idxs: [c_len], tensor containing context idxs of a single record
-        s: int, idx of answer start
-        e: int, idx of answer end
-        MND: torchtext iterators
+        s_idx: int, idx of answer start
+        e_idx: int, idx of answer end
+        BaseIter: torchtext iterators
     Output:
         ans_tokens: list of answer tokens of the single record
     """   
     
     ans_tokens = []   
-    if s == e:       
-        ans_vocab_idx = context_idxs[s]  # "idx of content" =>>> "idx of TEXT vocab"
-        text = MND.TEXT.vocab.itos[ans_vocab_idx]  # "idx of TEXT vocab" =>>> "answer text token"
+    if s_idx == e_idx:       
+        ans_vocab_idx = context_idxs[s_idx]  # "idx of content" =>>> "idx of TEXT vocab"
+        text = BaseIter.TEXT.vocab.itos[ans_vocab_idx]  # "idx of TEXT vocab" =>>> "answer text token"
         ans_tokens.append(text.lower())
     else:
-        ans_vocab_idx = context_idxs[s:(e+1)] 
-        # ans_vocab_idx = context_idxs[s:e]  
+        ans_vocab_idx = context_idxs[s_idx:(e_idx+1)] 
+        # ans_vocab_idx = context_idxs[s_idx:e_idx]  
         for vocab_idx in ans_vocab_idx:
-            text = MND.TEXT.vocab.itos[vocab_idx]
+            text = BaseIter.TEXT.vocab.itos[vocab_idx]
             ans_tokens.append(text.lower())
             
     return ans_tokens
