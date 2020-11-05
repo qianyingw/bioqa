@@ -8,15 +8,15 @@ Created on Mon Aug  3 18:47:55 2020
 
 
 import os
+import json
 
 import torch
 from torchtext import data
 import torchtext.vocab as vocab
 
-        
 
 #%%
-class MNDIterators(object):
+class BaselineIterators(object):
     
     def __init__(self, args):
         
@@ -26,7 +26,47 @@ class MNDIterators(object):
         self.TEXT = data.Field(batch_first=True)
         self.POSITION = data.RawField()     
         
+    def process_data(self, process_fn):
 
+        with open(self.args['data_path']) as fin:
+            dat = json.load(fin)
+        data_dir = os.path.dirname(self.args['data_path'])
+        
+        # PsyCIPN data
+        if os.path.basename(self.args['data_path']).split('-')[0] == 'PsyCIPN':
+            dat_train, dat_valid, dat_test = [], [], []
+            for ls in dat:
+                if ls['group'] == 'train':
+                    dat_train.append(ls)
+                elif ls['group'] == 'valid':
+                    dat_valid.append(ls)
+                else:
+                    dat_test.append(ls)
+         
+            train_processed = process_fn(dat_train)
+            valid_processed = process_fn(dat_valid)
+            test_processed = process_fn(dat_test)  
+        
+        # MND data
+        if os.path.basename(self.args['data_path']).split('-')[0] == 'MND':                        
+            train_processed = process_fn(dat['train'])               
+            valid_processed = process_fn(dat['valid'])
+            test_processed = process_fn(dat['test'])
+         
+        # Write to train/valid/test json    
+        with open(os.path.join(data_dir, 'train.json'), 'w') as fout:
+            for ls in train_processed:     
+                fout.write(json.dumps(ls) + '\n')
+            
+        with open(os.path.join(data_dir, 'valid.json'), 'w') as fout:
+            for ls in valid_processed:     
+                fout.write(json.dumps(ls) + '\n')
+        
+        with open(os.path.join(data_dir, 'test.json'), 'w') as fout:
+            for ls in test_processed:     
+                fout.write(json.dumps(ls) + '\n')  
+        
+        
     def create_data(self):
         
         # If a Field is shared between two columns in a dataset (e.g., question/answer in a QA dataset), 
@@ -37,9 +77,10 @@ class MNDIterators(object):
                   'y1s': ('y1s', self.POSITION),
                   'y2s': ('y2s', self.POSITION)}
         
-        assert os.path.exists(self.args['data_dir']), "Path not exist!"     
+        dir_path = os.path.dirname(self.args['data_path'])
+        assert os.path.exists(dir_path), "Path not exist!"     
 
-        train_data, valid_data, test_data = data.TabularDataset.splits(path = self.args['data_dir'],
+        train_data, valid_data, test_data = data.TabularDataset.splits(path = dir_path,
                                                                        train = 'train.json',
                                                                        validation = 'valid.json',
                                                                        test = 'test.json',
@@ -100,26 +141,27 @@ class MNDIterators(object):
 #     'max_vocab_size': 30000,
 #     'min_occur_freq': 0,
 #     'embed_path': '/media/mynewdrive/rob/wordvec/wikipedia-pubmed-and-PMC-w2v.txt',
-#     'data_dir': '/media/mynewdrive/bioqa/mnd'
+#     'data_path': "/media/mynewdrive/bioqa/mnd/intervention/MND-Intervention-1983-06Aug20.json"
+#     # 'data_path': "/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-20s-02112020.json"
 #     }             
 
-# MND = MNDIterators(args)
-# train_data, valid_data, test_data = MND.create_data()
-# train_iter, valid_iter, test_iter = MND.create_iterators(train_data, valid_data, test_data)
+# BaseIter = BaselineIterators(args)
+# train_data, valid_data, test_data = BaseIter.create_data()
+# train_iter, valid_iter, test_iter = BaseIter.create_iterators(train_data, valid_data, test_data)
 
 
-# MND.load_embedding().stoi['set']  # 347
-# MND.load_embedding().stoi['Set']  # 11912
-# MND.load_embedding().stoi['SET']  # 32073
+# BaseIter.load_embedding().stoi['set']  # 347
+# BaseIter.load_embedding().stoi['Set']  # 11912
+# BaseIter.load_embedding().stoi['SET']  # 32073
 
-# MND.TEXT.vocab.itos[:12]  # ['<unk>', '<pad>', ',', '.', 'the', 'of', 'and', '-', 'in', ')', '(', 'with']
-# MND.TEXT.vocab.itos[-4:]  # ['▵', '⩾', '⩾1', '⩾100']
+# BaseIter.TEXT.vocab.itos[:12]  # ['<unk>', '<pad>', ',', 'the', 'of', 'in', '.', 'and', ')', '(', 'to', 'a']
+# BaseIter.TEXT.vocab.itos[-4:]  # ['~30o', '~Ctrl', '~nd', '~uced']
 
-# MND.TEXT.pad_token  # '<pad>'
-# MND.TEXT.unk_token  # '<unk>'
-# MND.TEXT.vocab.stoi[MND.TEXT.pad_token]  # 1
-# MND.TEXT.vocab.stoi[MND.TEXT.unk_token]  # 0
-# MND.TEXT.vocab.vectors.shape  # [20878, 200]
+# BaseIter.TEXT.pad_token  # '<pad>'
+# BaseIter.TEXT.unk_token  # '<unk>'
+# BaseIter.TEXT.vocab.stoi[BaseIter.TEXT.pad_token]  # 1
+# BaseIter.TEXT.vocab.stoi[BaseIter.TEXT.unk_token]  # 0
+# BaseIter.TEXT.vocab.vectors.shape  # [26940, 200] / [20851, 200]
 
 
 # count = 0
@@ -132,12 +174,15 @@ class MNDIterators(object):
 # for batch in valid_iter:    
 #     if count < 8:
 #         print("=======================")
-#         print(batch.context.shape)   # [batch_size, context_len]
-#         print(batch.question.shape)  # [batch_size, question_len]
-#         print(batch.y1s.shape)    
-#         print(batch.context[0,:].shape) 
-#         print(batch.context[1,:].shape)  
-#         print(batch.context[-1,:].shape)             
+#         # print(batch.context.shape)   # [batch_size, context_len]
+#         # print(batch.question.shape)  # [batch_size, question_len]
+#         # print(batch.y1s)
+#         # print(batch.y2s)
+#         print(len(batch.y1s))
+#         # print(batch.y1s.shape)    
+#         # print(batch.context[0,:].shape) 
+#         # print(batch.context[1,:].shape)  
+#         # print(batch.context[-1,:].shape)             
 #         count += 1
     
 # b = next(iter(train_iter))
