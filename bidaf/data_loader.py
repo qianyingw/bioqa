@@ -174,8 +174,8 @@ class BaselineIterators(object):
 # for batch in valid_iter:    
 #     if count < 8:
 #         print("=======================")
-#         # print(batch.context.shape)   # [batch_size, context_len]
-#         # print(batch.question.shape)  # [batch_size, question_len]
+#         print(batch.context.shape)   # [batch_size, context_len]
+#         print(batch.question.shape)  # [batch_size, question_len]
 #         # print(batch.y1s)
 #         # print(batch.y2s)
 #         print(len(batch.y1s))
