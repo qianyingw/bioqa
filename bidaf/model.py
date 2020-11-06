@@ -149,10 +149,12 @@ class BiDAF(nn.Module):
         self.mod_fc2 = nn.Linear(2*hidden_dim, 1)
         
     
-    def forward(self, idx_c, idx_q):
+    def forward(self, idx_c, idx_q, y1s, y2s):
         """
-            text_c: [batch_size, context_len]
-            text_q: [batch_size, question_len]  
+            idx_c: [batch_size, context_len]
+            idx_q: [batch_size, question_len]  
+            y1s: [batch_size], start idxs of true answers
+            y2s: [batch_size], end idxs of true answers
             
         """ 
         mask_c = torch.zeros_like(idx_c) != idx_c
@@ -181,10 +183,22 @@ class BiDAF(nn.Module):
         M_new, _ = self.enc_M(M)  # [batch_size, c_len, 2*hidden_dim]
         
         # Output
-        p1 = self.attn_fc1(G) + self.mod_fc1(M)  # [batch_size, c_len, 1]
-        p2 = self.attn_fc2(G) + self.mod_fc2(M_new)  # [batch_size, c_len, 1]
+        logits_1 = self.attn_fc1(G) + self.mod_fc1(M)  # [batch_size, c_len, 1]
+        logits_2 = self.attn_fc2(G) + self.mod_fc2(M_new)  # [batch_size, c_len, 1]
+        logits_1 = logits_1.squeeze(2)  # [batch_size, c_len]      
+        logits_2 = logits_2.squeeze(2)  # [batch_size, c_len] 
+             
+        # log_p1 = masked_softmax(logits_1, mask_c, dim=1, log_softmax=True)  # [batch_size, c_len]
+        # log_p2 = masked_softmax(logits_2, mask_c, dim=1, log_softmax=True)  # [batch_size, c_len]
+        p1 = masked_softmax(logits_1, mask_c, dim=1, log_softmax=False)  # [batch_size, c_len]
+        p2 = masked_softmax(logits_2, mask_c, dim=1, log_softmax=False)  # [batch_size, c_len]
         
-        p1 = masked_softmax(p1.squeeze(2), mask_c, dim=1, log_softmax=True)  # [batch_size, c_len]
-        p2 = masked_softmax(p2.squeeze(2), mask_c, dim=1, log_softmax=True)  # [batch_size, c_len]
+        ### Loss ###     
+        # Sometimes y1s/y2s are outside the model inputs (like -999), need to ignore these terms
+        ignored_idx = p1.shape[1]
+        y1s_clamp = torch.clamp(y1s, min=0, max=ignored_idx)  # limit value to [0, max_c_len]. '-999' converted to 0 
+        y2s_clamp = torch.clamp(y2s, min=0, max=ignored_idx)
+        loss_fn = nn.CrossEntropyLoss(ignore_index=ignored_idx)
+        loss = (loss_fn(logits_1, y1s_clamp) + loss_fn(logits_2, y2s_clamp)) / 2         
         
-        return p1, p2
+        return loss, p1, p2
