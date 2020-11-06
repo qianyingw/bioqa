@@ -273,8 +273,8 @@ def plot_prfs(prfs_json_path):
  
     # Create scores dataframe
     epochs = int(len(dat['prfs'])/2)
-    train_df = pd.DataFrame(columns=['Loss', 'EM', 'F1'])
-    valid_df = pd.DataFrame(columns=['Loss', 'EM', 'F1'])
+    train_df = pd.DataFrame(columns=['Loss', 'EM', 'F1', 'Precision', 'Recall'])
+    valid_df = pd.DataFrame(columns=['Loss', 'EM', 'F1', 'Precision', 'Recall'])
     for i in range(epochs):
         train_df.loc[i] = list(dat['prfs']['train_'+str(i+1)].values())
         valid_df.loc[i] = list(dat['prfs']['valid_'+str(i+1)].values()) 
