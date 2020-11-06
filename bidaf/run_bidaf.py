@@ -14,8 +14,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-# os.chdir('/home/qwang/bioqa')
-
+os.chdir('/home/qwang/bioqa')
 
 from arg_parser import get_args
 import utils
@@ -50,7 +49,7 @@ else:
 
 #%% Load data and create iterators
 # args.data_path = "/media/mynewdrive/bioqa/mnd/intervention/MND-Intervention-1983-06Aug20.json" 
-args.data_path = "/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-20s-02112020.json"
+# args.data_path = "/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-20s-02112020.json"
 
 BaseIter = BaselineIterators(vars(args))
 # if os.path.basename(args.data_path).split('-')[0] == 'PsyCIPN':
@@ -87,10 +86,9 @@ model.embedding.weight.data[pad_idx] = torch.zeros(args.embed_dim)  # Zero the i
 
 del pretrained_embeddings
 
-
 #%% Define the optimizer & scheduler
 # optimizer = optim.Adam(model.parameters(1e-4))
-optimizer = optim.AdamW(model.parameters(), lr=5e-5)  
+optimizer = optim.AdamW(model.parameters(), lr=2e-5)  
  
 if torch.cuda.device_count() > 1:  # multiple GPUs
     model = nn.DataParallel(module=model)
@@ -158,7 +156,7 @@ with open(prfs_path, 'w') as fout:
     json.dump(output_dict, fout, indent=4)
 
 #%% plot
-utils.plot_prfs(prfs_path) 
+# utils.plot_prfs(prfs_path) 
 
 
 #%% Test
