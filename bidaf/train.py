@@ -37,23 +37,10 @@ def train_fn(model, BaseIter, iterator, optimizer, scheduler, clip, accum_step):
             # batch.y1s, batch.y2s: list. len = batch_size
             # p1s, p2s: [batch_size, c_len]
             
-            # Get start/end idxs
-            log_p1s, log_p2s = model(batch.context, batch.question)
-            p1s, p2s = log_p1s.exp(), log_p2s.exp()
-            s_idxs, e_idxs = utils.get_ans_idx(p1s, p2s)  # [batch_size]
-                     
             y1s, y2s = torch.LongTensor(batch.y1s), torch.LongTensor(batch.y2s)
-            
-            # Sometimes y1s/y2s are outside the model inputs (like -999), need to ignore these terms
-            ignored_idx = p1s.shape[1]
-            y1s_clamp = torch.clamp(y1s, min=0, max=ignored_idx)  # limit value to [0, max_c_len]. '-999' converted to 0 
-            y2s_clamp = torch.clamp(y2s, min=0, max=ignored_idx)
-
-            loss_fn = nn.CrossEntropyLoss(ignore_index=ignored_idx)
-            loss = (loss_fn(p1s, y1s_clamp) + loss_fn(p2s, y2s_clamp)) / 2         
-            # loss = F.nll_loss(log_p1s, y1s) + F.nll_loss(log_p2s, y2s)
+            loss, p1s, p2s = model(batch.context, batch.question, y1s, y2s)
             scores['loss'] += loss.item() 
-             
+            
             loss = loss / accum_step  # loss gradients are accumulated by loss.backward() so we need to ave accumulated loss gradients
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), clip)  # prevent exploding gradients
@@ -63,8 +50,11 @@ def train_fn(model, BaseIter, iterator, optimizer, scheduler, clip, accum_step):
                 optimizer.step()
                 scheduler.step()
                 optimizer.zero_grad()
+                
+            # Get start/end idxs
+            s_idxs, e_idxs = utils.get_ans_idx(p1s, p2s)  # [batch_size]
                                        
-            for i in range(p1s.shape[0]):                                              
+            for i in range(y1s.shape[0]):                                              
                 if (y1s[i] >= 0) and (y2s[i] >= 0):  # When the answer passage not truncated
                     context_idxs = batch.context[i]  
                     # Convert answer idxs to tokens
@@ -101,25 +91,16 @@ def valid_fn(model, BaseIter, iterator):
     
     with torch.no_grad():
         with tqdm(total=len_iter) as progress_bar:      
-            for batch in iterator:               
-                # Get start/end idxs
-                log_p1s, log_p2s = model(batch.context, batch.question)
-                p1s, p2s = log_p1s.exp(), log_p2s.exp()
-                s_idxs, e_idxs = utils.get_ans_idx(p1s, p2s)  # [batch_size]
-                         
+            for batch in iterator:   
+                
                 y1s, y2s = torch.LongTensor(batch.y1s), torch.LongTensor(batch.y2s)
-                
-                # Sometimes y1s/y2s are outside the model inputs (like -999), need to ignore these terms
-                ignored_idx = p1s.shape[1]
-                y1s_clamp = torch.clamp(y1s, min=0, max=ignored_idx)  # limit value to [0, max_c_len]. '-999' converted to 0 
-                y2s_clamp = torch.clamp(y2s, min=0, max=ignored_idx)
-    
-                loss_fn = nn.CrossEntropyLoss(ignore_index=ignored_idx)
-                loss = (loss_fn(p1s, y1s_clamp) + loss_fn(p2s, y2s_clamp)) / 2         
-                # loss = F.nll_loss(log_p1s, y1s) + F.nll_loss(log_p2s, y2s)
+                loss, p1s, p2s = model(batch.context, batch.question, y1s, y2s)
                 scores['loss'] += loss.item() 
+            
+                # Get start/end idxs
+                s_idxs, e_idxs = utils.get_ans_idx(p1s, p2s)  # [batch_size]                
                 
-                for i in range(p1s.shape[0]):                                              
+                for i in range(y1s.shape[0]):                                              
                     if (y1s[i] >= 0) and (y2s[i] >= 0):  # When the answer passage not truncated
                         context_idxs = batch.context[i]  
                         # Convert answer idxs to tokens
