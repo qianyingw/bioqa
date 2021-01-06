@@ -15,6 +15,13 @@ from torchtext import data
 import torchtext.vocab as vocab
 
 
+def pad_tokens(tokens, max_len):
+    if len(tokens) <= max_len:
+        tokens = tokens + ['<pad>']*(max_len-len(tokens))
+    else:
+        tokens = tokens[:max_len]
+    return tokens
+
 #%%
 class BaselineIterators(object):
     
@@ -26,7 +33,7 @@ class BaselineIterators(object):
         self.TEXT = data.Field(batch_first=True)
         self.POSITION = data.RawField()     
         
-    def process_data(self, process_fn):
+    def process_data(self, process_fn, model='bidaf', max_clen=None, max_qlen=None):
 
         with open(self.args['data_path']) as fin:
             dat = json.load(fin)
@@ -52,7 +59,19 @@ class BaselineIterators(object):
             train_processed = process_fn(dat['train'])               
             valid_processed = process_fn(dat['valid'])
             test_processed = process_fn(dat['test'])
-         
+            
+        # Pading over batches (qanet only)
+        if model == 'qanet':
+            for i, _ in enumerate(train_processed):
+                train_processed[i]['context_tokens'] = pad_tokens(train_processed[i]['context_tokens'], max_len=max_clen)
+                train_processed[i]['ques_tokens'] = pad_tokens(train_processed[i]['ques_tokens'], max_len=max_qlen)
+            for i, _ in enumerate(valid_processed):
+                valid_processed[i]['context_tokens'] = pad_tokens(valid_processed[i]['context_tokens'], max_len=max_clen)
+                valid_processed[i]['ques_tokens'] = pad_tokens(valid_processed[i]['ques_tokens'], max_len=max_qlen)
+            for i, _ in enumerate(test_processed):
+                test_processed[i]['context_tokens'] = pad_tokens(test_processed[i]['context_tokens'], max_len=max_clen)
+                test_processed[i]['ques_tokens'] = pad_tokens(test_processed[i]['ques_tokens'], max_len=max_qlen)
+                
         # Write to train/valid/test json    
         with open(os.path.join(data_dir, 'train.json'), 'w') as fout:
             for ls in train_processed:     
