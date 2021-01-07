@@ -76,7 +76,7 @@ model = QANet(vocab_size = vocab_size,
               max_c_len = MAX_CLEN,
               max_q_len = MAX_QLEN,
               hidden_dim= args.hidden_dim, 
-              n_block_mod = N_BLOCK_MOD, 
+              n_block_mod = NUM_BLOCKS_MOD, 
               pad_idx = pad_idx)
 
 # n_pars = sum(p.numel() for p in model.parameters())
