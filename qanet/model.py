@@ -9,7 +9,7 @@ Created on Tue Jan  5 12:23:23 2021
 
 import torch
 import torch.nn as nn
-import torch.nn.Functional as F
+import torch.nn.functional as F
 import math
 
 from utils import masked_softmax
@@ -60,9 +60,13 @@ class PositionEncoder(nn.Module):
         self.pos_enc = nn.Parameter(pos_enc, requires_grad=False)
 
     def forward(self, x):
-        x = x + self.pos_enc
+        '''
+            x: [batch_size, s_len, d_model]
+        '''
+        x = x.permute(0,2,1)  # [batch_size, d_model, s_len]
+        x = x + self.pos_enc  # [batch_size, d_model, s_len]
+        x = x.permute(0,2,1)  # [batch_size, s_len, d_model]
         return x
-    
         
 #%%
 class InputEmbed(nn.Module):
@@ -70,7 +74,7 @@ class InputEmbed(nn.Module):
         super(InputEmbed, self).__init__()
         
         self.embed = nn.Embedding(vocab_size, embed_dim, pad_idx)
-        self.dropout = nnc.Dropout(dropout)
+        self.dropout = nn.Dropout(dropout)
         self.highway = Highway(embed_dim, 2)     
 
     def forward(self, idx_seq):
@@ -122,16 +126,16 @@ class EncoderBlock(nn.Module):
         super(EncoderBlock, self).__init__()
         
         self.pos_enc = PositionEncoder(s_len, hidden_dim)   
-        self.sep_convs = nn.ModuleList([SepConv(hdim=hidden_dim, odim=hidden_dim, fsize) for _ in range(num_convs)])   
+        self.sep_convs = nn.ModuleList([SepConv(hidden_dim, hidden_dim, fsize) for _ in range(num_convs)])   
         self.layer_norms = nn.ModuleList([nn.LayerNorm(hidden_dim, s_len) for _ in range(num_convs)])                           
         self.dropout = nn.Dropout(p=0.1)
 
-        self.enc_layer = nn.TransformerEncoderLayer(hidden_dim, n_head=8)  # self-attn + ffn
+        self.enc_layer = nn.TransformerEncoderLayer(hidden_dim, nhead=8)  # self-attn + ffn
          
     def forward(self, x, x_mask):
         '''
             x: [batch_size, s_len, hidden_dim]
-            x: [batch_size, s_len]
+            x_mask: [batch_size, s_len]
         '''
         
         out = self.pos_enc(x)  # [batch_size, s_len, hidden_dim]
@@ -144,8 +148,13 @@ class EncoderBlock(nn.Module):
             res = out  # update res
             
         ## self-attn + ffn
-        out = self.enc_layer(out, x_mask)  # [batch_size, s_len, hidden_dim]
-        
+        out = out.permute(1,0,2)  # [s_len, batch_size, hidden_dim]
+        # In TransformerEncoderLayer, 
+        #       src: [s_len, batch_size, hidden_dim]
+        #       src_key_padding_mask: [batch_size, s_len], 1 -> pad token, 0 -> true token
+        x_mask = torch.logical_not(x_mask)
+        out = self.enc_layer(src=out, src_key_padding_mask=x_mask)  # [s_len, batch_size, hidden_dim]        
+        out = out.permute(1,0,2)  # [batch_size, s_len, hidden_dim]
         return out  
 
 #%%
@@ -238,14 +247,14 @@ class QANet(nn.Module):
         self.embed_inp = InputEmbed(vocab_size, embed_dim, pad_idx)
         self.embed_conv = SepConv(hdim = embed_dim, odim = hidden_dim, fsize=5)
         
-        self.embed_enc_c = EncoderBlock(num_convs=4, max_c_len, hidden_dim, fsize=7)
-        self.embed_enc_q = EncoderBlock(num_convs=4, max_q_len, hidden_dim, fsize=7)
+        self.embed_enc_c = EncoderBlock(num_convs=4, s_len=max_c_len, hidden_dim=hidden_dim, fsize=7)
+        self.embed_enc_q = EncoderBlock(num_convs=4, s_len=max_q_len, hidden_dim=hidden_dim, fsize=7)
         
         self.attn = CQAttn(hidden_dim)
         
         self.mod_conv = SepConv(hdim = 4*hidden_dim, odim = hidden_dim, fsize=5)
-        mod_enc_block = EncoderBlock(num_convs=2, max_c_len, hidden_dim, fsize=5)
-        self.mod_enc = nn.ModuleList([mod_enc_block] * 7)
+        mod_enc_block = EncoderBlock(num_convs=2, s_len=max_c_len, hidden_dim=hidden_dim, fsize=5)
+        self.mod_enc = nn.ModuleList([mod_enc_block] * 2) # 7)
         
         self.fc1 = nn.Linear(2*hidden_dim, 1)
         self.fc2 = nn.Linear(2*hidden_dim, 1)
@@ -308,7 +317,7 @@ class QANet(nn.Module):
         y1s_clamp = torch.clamp(y1s, min=0, max=ignored_idx)  # limit value to [0, max_c_len]. '-999' converted to 0 
         y2s_clamp = torch.clamp(y2s, min=0, max=ignored_idx)
         loss_fn = nn.CrossEntropyLoss(ignore_index=ignored_idx)
-        loss = (loss_fn(logits1, logits2) + loss_fn(logits_2, y2s_clamp)) / 2 
+        loss = (loss_fn(logits1, y1s_clamp) + loss_fn(logits2, y2s_clamp)) / 2 
 
         return loss, p1, p2
         
