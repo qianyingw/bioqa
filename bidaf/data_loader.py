@@ -14,7 +14,7 @@ import torch
 from torchtext import data
 import torchtext.vocab as vocab
 
-
+#%% Process for qanet only
 def pad_tokens(tokens, max_len):
     if len(tokens) <= max_len:
         tokens = tokens + ['<pad>']*(max_len-len(tokens))
@@ -22,6 +22,19 @@ def pad_tokens(tokens, max_len):
         tokens = tokens[:max_len]
     return tokens
 
+def correct_ys(y, max_len):
+    if y >= max_len:
+        y = -999
+    return y
+ 
+def qanet_process(dat_processed, max_clen, max_qlen):
+    for i, _ in enumerate(dat_processed):
+        dat_processed[i]['context_tokens'] = pad_tokens(dat_processed[i]['context_tokens'], max_len=max_clen)
+        dat_processed[i]['ques_tokens'] = pad_tokens(dat_processed[i]['ques_tokens'], max_len=max_qlen)   
+        dat_processed[i]['y1s'] = correct_ys(dat_processed[i]['y1s'], max_len=max_clen) 
+        dat_processed[i]['y2s'] = correct_ys(dat_processed[i]['y2s'], max_len=max_clen) 
+    return dat_processed
+    
 #%%
 class BaselineIterators(object):
     
@@ -60,17 +73,11 @@ class BaselineIterators(object):
             valid_processed = process_fn(dat['valid'])
             test_processed = process_fn(dat['test'])
             
-        # Pading over batches (qanet only)
+        # Pading over batches and correct y1s/y2s to -999 if answers are in the truncated text(qanet only)
         if model == 'qanet':
-            for i, _ in enumerate(train_processed):
-                train_processed[i]['context_tokens'] = pad_tokens(train_processed[i]['context_tokens'], max_len=max_clen)
-                train_processed[i]['ques_tokens'] = pad_tokens(train_processed[i]['ques_tokens'], max_len=max_qlen)
-            for i, _ in enumerate(valid_processed):
-                valid_processed[i]['context_tokens'] = pad_tokens(valid_processed[i]['context_tokens'], max_len=max_clen)
-                valid_processed[i]['ques_tokens'] = pad_tokens(valid_processed[i]['ques_tokens'], max_len=max_qlen)
-            for i, _ in enumerate(test_processed):
-                test_processed[i]['context_tokens'] = pad_tokens(test_processed[i]['context_tokens'], max_len=max_clen)
-                test_processed[i]['ques_tokens'] = pad_tokens(test_processed[i]['ques_tokens'], max_len=max_qlen)
+            train_processed = qanet_process(train_processed, max_clen, max_qlen)
+            valid_processed = qanet_process(valid_processed, max_clen, max_qlen)
+            test_processed = qanet_process(test_processed, max_clen, max_qlen)
                 
         # Write to train/valid/test json    
         with open(os.path.join(data_dir, 'train.json'), 'w') as fout:
