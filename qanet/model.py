@@ -141,8 +141,9 @@ class EncoderBlock(nn.Module):
         out = self.pos_enc(x)  # [batch_size, s_len, hidden_dim]
         res = out
         for i, sep_conv in enumerate(self.sep_convs):
-            out = self.layer_norms[i](out)  # [batch_size, s_len, hidden_dim]
+            # out = self.layer_norms[i](out)  # [batch_size, s_len, hidden_dim]
             out = sep_conv(out)  # [batch_size, s_len, hidden_dim]
+            out = self.layer_norms[i](out)  # [batch_size, s_len, hidden_dim]
             out = self.dropout(F.relu(out))
             out = out + res  # update out
             res = out  # update res
