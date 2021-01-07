@@ -241,7 +241,7 @@ class CQAttn(nn.Module):
 #%%
 class QANet(nn.Module):
     
-    def __init__(self, vocab_size, embed_dim, max_c_len, max_q_len, hidden_dim, pad_idx=1):
+    def __init__(self, vocab_size, embed_dim, max_c_len, max_q_len, hidden_dim, n_block_mod, pad_idx=1):
         super(QANet, self).__init__()
         
         self.embed_inp = InputEmbed(vocab_size, embed_dim, pad_idx)
@@ -254,7 +254,7 @@ class QANet(nn.Module):
         
         self.mod_conv = SepConv(hdim = 4*hidden_dim, odim = hidden_dim, fsize=5)
         mod_enc_block = EncoderBlock(num_convs=2, s_len=max_c_len, hidden_dim=hidden_dim, fsize=5)
-        self.mod_enc = nn.ModuleList([mod_enc_block] * 2) # 7)
+        self.mod_enc = nn.ModuleList([mod_enc_block] * n_block_mod)
         
         self.fc1 = nn.Linear(2*hidden_dim, 1)
         self.fc2 = nn.Linear(2*hidden_dim, 1)
