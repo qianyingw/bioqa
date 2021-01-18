@@ -135,13 +135,15 @@ class PsyCIPNDataset():
     
         
 #%%
-def compute_ave_precision(ans_ls, sent_ls, strict=True):
+def compute_ave_precision(ans_ls, sent_ls):
     '''Compute Average Precision for a single record'''
         
-    ave_precision = 0
     n_sent_retrieved = 0
-    n_sent_relevant = 0
     
+    ave1_prec, n1_relev = 0, 0  # strict
+    ave2_prec, n2_relev = 0, 0  # ratio
+    ave3_prec, n3_relev = 0, 0  # loose
+
     for sent in sent_ls:              
         n_sent_retrieved += 1
         
@@ -152,31 +154,32 @@ def compute_ave_precision(ans_ls, sent_ls, strict=True):
             matches = re.findall(r'\b'+re.escape(ans)+r'\b', sent, re.MULTILINE | re.IGNORECASE)
             if len(matches) > 0:         
                 n_ans_matched += 1
-                
-        if strict == True:       
-            # "sent" is relevamt only when all answers can be found in the sentence
-            if n_ans_matched == len(ans_ls):
-                n_sent_relevant += 1
-                precision = n_sent_relevant / n_sent_retrieved
-                ave_precision += precision
-        else:
-            # Rather than 0-1, we use the ratio of matched answers as the approximate value
-            if n_ans_matched > 0:
-                n_sent_relevant += n_ans_matched / len(ans_ls)
-                precision = n_sent_relevant / n_sent_retrieved
-                ave_precision += precision
+                     
+        # "strict": sent is relevant only when all answers can be found in the sentence
+        if n_ans_matched == len(ans_ls):
+            n1_relev += 1
+            ave1_prec += n1_relev / n_sent_retrieved                               
+        
+        if n_ans_matched > 0:
+            # "ratio": rather than 0-1, we use the ratio of matched answers as the approximate value
+            n2_relev += n_ans_matched / len(ans_ls)
+            ave2_prec += n2_relev / n_sent_retrieved
+            
+            # "loose": a sent is relevant if it contains at least one answer
+            n3_relev += 1
+            ave3_prec += n3_relev / n_sent_retrieved                        
+
+    ave1_prec = ave1_prec / n1_relev if n1_relev > 0 else 0  # strict
+    ave2_prec = ave2_prec / n2_relev if n2_relev > 0 else 0  # ratio
+    ave3_prec = ave3_prec / n3_relev if n3_relev > 0 else 0  # loose 
     
-    if n_sent_relevant == 0:
-        ave_precision = 0
-    else:
-        ave_precision = ave_precision / n_sent_relevant
-              
-    return ave_precision
+    return ave1_prec, ave2_prec, ave1_prec
 
 
 def compute_match_ratio(ans_ls, sent_ls, strict=True):
     '''Compute answers matched ratio for a single record'''
-    match_ratio = 0
+    
+    mr1, mr2 = 0, 0
     n_ans_match = 0
     text = (" ").join(sent_ls)
     
@@ -187,30 +190,47 @@ def compute_match_ratio(ans_ls, sent_ls, strict=True):
         matches = re.findall(r'\b'+re.escape(ans)+r'\b', text, re.MULTILINE | re.IGNORECASE)
         if len(matches) > 0:
             n_ans_match += 1
-    
-    if strict == True:
-        if n_ans_match == len(ans_ls):
-            match_ratio = 1
+
+    if n_ans_match == len(ans_ls):  # strict
+        mr1 = 1
     else:
-        match_ratio = n_ans_match / len(ans_ls)
+        mr2 = n_ans_match / len(ans_ls)
               
-    return match_ratio
+    return mr1, mr2
 
 #%%
-# json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-992-24102020.json'
-json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-679-factoid-28102020.json'
-# json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-313-list-28102020.json'
+json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-1225-30102020.json'
+# json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-796-factoid-30102020.json'
+# json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-429-list-30102020.json'
 
 import time
 start = time.time()
-PC = PsyCIPNDataset(json_path, max_n_sent=120, method='bm25')
-mAPs, mAP, mMRs, mMR = 0, 0, 0, 0
+PC = PsyCIPNDataset(json_path, max_n_sent=5, method='bm25')
+sMAP, rMAP, lMAP, sMMR, MMR = 0, 0, 0, 0, 0
 for i in range(len(PC)):
     ans_ls, sent_ls = PC[i][0], PC[i][1]
-    mAPs += compute_ave_precision(ans_ls, sent_ls, strict=True) 
-    mAP += compute_ave_precision(ans_ls, sent_ls, strict=False)  
-    mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
-    mMR += compute_match_ratio(ans_ls, sent_ls, strict=False) 
+    
+    AP = compute_ave_precision(ans_ls, sent_ls)
+    sMAP += AP[0]
+    rMAP += AP[1]
+    lMAP += AP[2]
+    
+    MR = compute_match_ratio(ans_ls, sent_ls)
+    sMMR += MR[0]
+    MMR += MR[1]
     print(i)
-print("[sMAP|MAP|sMMR|MMR]-120: |{0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}".format(mAPs/len(PC)*100, mAP/len(PC)*100, mMRs/len(PC)*100, mMR/len(PC)*100))
+    
+print("[sMAP|rMAP|lMAP|sMMR|MMR]-5: |{0:.2f}|{1:.2f}|{1:.2f}|{2:.2f}|{3:.2f}".format(
+    sMAP/len(PC)*100, rMAP/len(PC)*100, lMAP/len(PC)*100, sMMR/len(PC)*100, MMR/len(PC)*100))
 print("Time elapsed: {} mins".format((time.time()-start)/60))  
+
+#%%
+# json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-796-factoid-30102020.json'
+# print("============ sbert ============")  
+# PC = PsyCIPNDataset(json_path, max_n_sent=25, method='sbert')
+# mAPs, mAP, mMRs, mMR = 0, 0, 0, 0
+# for i in range(len(PC)):
+#     ans_ls, sent_ls = PC[i][0], PC[i][1]
+#     mAPs += compute_ave_precision(ans_ls, sent_ls, strict=True) 
+#     mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
+# print("[sMAP|sMMR]-sbert-25: |{0:.2f}|{1:.2f}".format(mAPs/len(PC)*100, mMRs/len(PC)*100))
