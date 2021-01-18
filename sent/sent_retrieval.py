@@ -173,7 +173,7 @@ def compute_ave_precision(ans_ls, sent_ls):
     ave2_prec = ave2_prec / n2_relev if n2_relev > 0 else 0  # ratio
     ave3_prec = ave3_prec / n3_relev if n3_relev > 0 else 0  # loose 
     
-    return ave1_prec, ave2_prec, ave1_prec
+    return ave1_prec, ave2_prec, ave3_prec
 
 
 def compute_match_ratio(ans_ls, sent_ls, strict=True):
@@ -191,11 +191,9 @@ def compute_match_ratio(ans_ls, sent_ls, strict=True):
         if len(matches) > 0:
             n_ans_match += 1
 
-    if n_ans_match == len(ans_ls):  # strict
-        mr1 = 1
-    else:
-        mr2 = n_ans_match / len(ans_ls)
-              
+    mr1 = 1 if n_ans_match == len(ans_ls) else 0  # strict
+    mr2 = n_ans_match / len(ans_ls)
+    
     return mr1, mr2
 
 #%%
@@ -205,7 +203,7 @@ json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-1225-30102020.json'
 
 import time
 start = time.time()
-PC = PsyCIPNDataset(json_path, max_n_sent=5, method='bm25')
+PC = PsyCIPNDataset(json_path, max_n_sent=60, method='bm25')
 sMAP, rMAP, lMAP, sMMR, MMR = 0, 0, 0, 0, 0
 for i in range(len(PC)):
     ans_ls, sent_ls = PC[i][0], PC[i][1]
@@ -220,7 +218,7 @@ for i in range(len(PC)):
     MMR += MR[1]
     print(i)
     
-print("[sMAP|rMAP|lMAP|sMMR|MMR]-5: |{0:.2f}|{1:.2f}|{1:.2f}|{2:.2f}|{3:.2f}".format(
+print("[sMAP|rMAP|lMAP|sMMR|MMR]: |{0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}|{4:.2f}".format(
     sMAP/len(PC)*100, rMAP/len(PC)*100, lMAP/len(PC)*100, sMMR/len(PC)*100, MMR/len(PC)*100))
 print("Time elapsed: {} mins".format((time.time()-start)/60))  
 
