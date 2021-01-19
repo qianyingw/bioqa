@@ -140,9 +140,9 @@ def compute_ave_precision(ans_ls, sent_ls):
         
     n_sent_retrieved = 0
     
-    ave1_prec, n1_relev = 0, 0  # strict
-    ave2_prec, n2_relev = 0, 0  # ratio
-    ave3_prec, n3_relev = 0, 0  # loose
+    prec1, n1_relev = 0, 0  # strict
+    prec2, n2_relev = 0, 0  # ratio
+    prec3, n3_relev = 0, 0  # loose
 
     for sent in sent_ls:              
         n_sent_retrieved += 1
@@ -158,20 +158,20 @@ def compute_ave_precision(ans_ls, sent_ls):
         # "strict": sent is relevant only when all answers can be found in the sentence
         if n_ans_matched == len(ans_ls):
             n1_relev += 1
-            ave1_prec += n1_relev / n_sent_retrieved                               
+            prec1 += n1_relev / n_sent_retrieved                               
         
         if n_ans_matched > 0:
             # "ratio": rather than 0-1, we use the ratio of matched answers as the approximate value
             n2_relev += n_ans_matched / len(ans_ls)
-            ave2_prec += n2_relev / n_sent_retrieved
+            prec2 += n2_relev / n_sent_retrieved
             
             # "loose": a sent is relevant if it contains at least one answer
             n3_relev += 1
-            ave3_prec += n3_relev / n_sent_retrieved                        
+            prec3 += n3_relev / n_sent_retrieved                        
 
-    ave1_prec = ave1_prec / n1_relev if n1_relev > 0 else 0  # strict
-    ave2_prec = ave2_prec / n2_relev if n2_relev > 0 else 0  # ratio
-    ave3_prec = ave3_prec / n3_relev if n3_relev > 0 else 0  # loose 
+    ave1_prec = prec1 / n1_relev if n1_relev > 0 else 0  # strict
+    ave2_prec = prec2 / n2_relev if n2_relev > 0 else 0  # ratio
+    ave3_prec = prec3 / n3_relev if n3_relev > 0 else 0  # loose 
     
     return ave1_prec, ave2_prec, ave3_prec
 
