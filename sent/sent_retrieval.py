@@ -218,7 +218,7 @@ for i in range(len(PC)):
     MMR += MR[1]
     print(i)
     
-print("[sMAP|rMAP|lMAP|sMMR|MMR]: |{0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}|{4:.2f}".format(
+print("sMAP|rMAP|lMAP|sMMR|MMR: |{0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}|{4:.2f}".format(
     sMAP/len(PC)*100, rMAP/len(PC)*100, lMAP/len(PC)*100, sMMR/len(PC)*100, MMR/len(PC)*100))
 print("Time elapsed: {} mins".format((time.time()-start)/60))  
 
