@@ -43,6 +43,7 @@ class BaselineIterators(object):
         self.args = args
 
         self.ID = data.RawField()
+        self.PID = data.RawField()
         self.TEXT = data.Field(batch_first=True)
         self.POSITION = data.RawField()     
         
@@ -98,6 +99,7 @@ class BaselineIterators(object):
         # If a Field is shared between two columns in a dataset (e.g., question/answer in a QA dataset), 
         # then they will have a shared vocabulary.
         fields = {'id': ('id', self.ID), 
+                  'pubId': ('pid', self.PID), 
                   'ques_tokens': ('question', self.TEXT), 
                   'context_tokens': ('context', self.TEXT),
                   'y1s': ('y1s', self.POSITION),
