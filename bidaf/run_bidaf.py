@@ -19,7 +19,7 @@ os.chdir('/home/qwang/bioqa')
 from arg_parser import get_args
 import utils
 
-import helper.helper_psycipn as helper_psycipn
+import helper.helper_psci as helper_psci
 import helper.helper_mnd as helper_mnd
 
 from bidaf.data_loader import BaselineIterators
@@ -53,7 +53,7 @@ else:
 
 BaseIter = BaselineIterators(vars(args))
 # if os.path.basename(args.data_path).split('-')[0] == 'PsyCIPN':
-#     BaseIter.process_data(process_fn = helper_psycipn.process_for_baseline)
+#     BaseIter.process_data(process_fn = helper_psci.process_for_baseline)
 # if os.path.basename(args.data_path).split('-')[0] == 'MND':
 #     BaseIter.process_data(process_fn = helper_mnd.process_for_baseline)
     
@@ -88,7 +88,7 @@ del pretrained_embeddings
 
 #%% Define the optimizer & scheduler
 # optimizer = optim.Adam(model.parameters(1e-4))
-optimizer = optim.AdamW(model.parameters(), lr=2e-5)  
+optimizer = optim.AdamW(model.parameters(), lr=1e-3)  
  
 if torch.cuda.device_count() > 1:  # multiple GPUs
     model = nn.DataParallel(module=model)
@@ -156,7 +156,7 @@ with open(prfs_path, 'w') as fout:
     json.dump(output_dict, fout, indent=4)
 
 #%% plot
-# utils.plot_prfs(prfs_path) 
+utils.plot_prfs(prfs_path) 
 
 
 #%% Test
