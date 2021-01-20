@@ -20,7 +20,7 @@ os.chdir('/home/qwang/bioqa')
 from arg_parser import get_args
 import utils
 
-import helper.helper_psycipn as helper_psycipn
+import helper.helper_psci as helper_psci
 import helper.helper_mnd as helper_mnd
 
 from bidaf.data_loader import BaselineIterators
@@ -30,9 +30,9 @@ from qanet.model import QANet
 
 #%% Get arguments
 args = get_args()
-MAX_CLEN = 960
+MAX_CLEN = 512
 MAX_QLEN = 10
-NUM_BLOCKS_MOD = 3
+NUM_BLOCKS_MOD = 2
 
 #%% Set random seed and device
 random.seed(args.seed)
@@ -56,7 +56,7 @@ else:
 # args.data_path = "/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-20s-02112020.json"
 BaseIter = BaselineIterators(vars(args))
 if os.path.basename(args.data_path).split('-')[0] == 'PsyCIPN':
-    BaseIter.process_data(process_fn = helper_psycipn.process_for_baseline, model='qanet', max_clen=MAX_CLEN, max_qlen=MAX_QLEN)
+    BaseIter.process_data(process_fn = helper_psci.process_for_baseline, model='qanet', max_clen=MAX_CLEN, max_qlen=MAX_QLEN)
 if os.path.basename(args.data_path).split('-')[0] == 'MND':
     BaseIter.process_data(process_fn = helper_mnd.process_for_baseline, model='qanet', max_clen=MAX_CLEN, max_qlen=MAX_QLEN)
     

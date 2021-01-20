@@ -169,11 +169,14 @@ class BaselineIterators(object):
 #     'max_vocab_size': 30000,
 #     'min_occur_freq': 0,
 #     'embed_path': '/media/mynewdrive/rob/wordvec/wikipedia-pubmed-and-PMC-w2v.txt',
-#     'data_path': "/media/mynewdrive/bioqa/mnd/intervention/MND-Intervention-1983-06Aug20.json"
+#     # 'data_path': "/media/mynewdrive/bioqa/mnd/intervention/MND-Intervention-1983-06Aug20.json"
 #     # 'data_path': "/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-20s-02112020.json"
+#     'data_path': "/media/mynewdrive/bioqa/PsyCIPN-II-1984-30s-20012021.json"
 #     }             
 
-# BaseIter = BaselineIterators(args)
+# # BaseIter = BaselineIterators(args)
+# import helper.helper_psci as helper_psci
+# BaseIter.process_data(process_fn = helper_psci.process_for_baseline, model='bidaf')  # 8mins
 # train_data, valid_data, test_data = BaseIter.create_data()
 # train_iter, valid_iter, test_iter = BaseIter.create_iterators(train_data, valid_data, test_data)
 
