@@ -93,10 +93,10 @@ def get_ans_idx(p_s, p_e, max_len=15, no_answer=False):
     return s_idxs, e_idxs
 
 #%%
-def get_ans_list_idx(p_s, p_e, max_len=15, num_answer=5):
+def get_ans_list_idx(p_s, p_e, max_len=15, threshold=None, num_answer=1):
     """
     Discretize soft predictions (probs) to get start and end indices
-    Choose top [num_answer] pairs of (i, j) which maximize p1[i]*p2[j], s.t. (i <= j) & (j-i+1 <= max_len)
+    Choose top [num_answer] pairs of (i, j) where p1[i]*p2[j] > threshold, s.t. (i <= j) & (j-i+1 <= max_len)
     Args:
         p_s: [batch_size, c_len], probs for start index
         p_e: [batch_size, c_len], probs for end index
@@ -104,8 +104,9 @@ def get_ans_list_idx(p_s, p_e, max_len=15, num_answer=5):
         num_answers: number of candidate answers returned 
         
     Returns:
-        s_idxs:  [batch_size, num_answer], hard predictions for start index
-        e_idxs: [batch_size, num_answer], hard predictions for end index
+        s_idxs, e_idxs (batch answer idxs)
+        When threshold is None: s_idxs/e_idxs are tensors, [batch_size, num_answer]
+        Else: s_idxs/e_idxs are lists, element is list of ans idxs
         
     """
     c_len = p_s.shape[1]
@@ -118,24 +119,46 @@ def get_ans_list_idx(p_s, p_e, max_len=15, num_answer=5):
     p_s = p_s.unsqueeze(2)  # [batch_size, c_len, 1]
     p_e = p_e.unsqueeze(1)  # [batch_size, 1, c_len]    
     p_join = torch.bmm(p_s, p_e)  # [batch_size, c_len, c_len]
-
+    
     # Restrict (i, j) s.t. (i <= j) & (j-i+1 <= max_len)
     is_legal_pair = torch.triu(torch.ones((c_len, c_len), device=device))
     is_legal_pair = is_legal_pair - torch.triu(torch.ones((c_len, c_len), device=device), diagonal=max_len)
     p_join = p_join * is_legal_pair
-
-    # Obtain top [num_answer] pairs of (i, j) which maximize p_join
-    _, flat_idxs = torch.topk(torch.flatten(p_join, start_dim=1), num_answer)  # [batch_size, num_answer]
-    
-    s_idxs, e_idxs = [], []
-    for fidx in flat_idxs:
-        idxs = torch.tensor(np.unravel_index(fidx.numpy(), p_join.shape[1:]))  # [2, num_answer]
-        s_idxs.append(idxs[0])  # idxs[0]: [num_answer]
-        e_idxs.append(idxs[1])  # idxs[1]: [num_answer]
-    s_idxs = torch.stack(s_idxs)    # [batch_size, num_answer]
-    e_idxs = torch.stack(e_idxs)    # [batch_size, num_answer]    
-
-    return s_idxs, e_idxs
+        
+    if threshold:  
+        batch_s_idxs, batch_e_idxs = [], []
+        for p in p_join:            
+            is_larger = p > threshold  # p: [c_len, c_len]
+            p = p * is_larger
+        
+            if num_answer > 1 and torch.sum(is_larger) >= num_answer:
+                # Obtain top [num_answer] (i, j) pairs where p1[i]*p2[j] > threshold
+                _, flat_idxs = torch.topk(torch.flatten(p, start_dim=0), num_answer)  # [num_answer]
+                idxs = torch.tensor(np.unravel_index(flat_idxs.numpy(), p.shape))  # [2, num_answer]
+                s_idxs, e_idxs = idxs[0], idxs[1]
+            
+            else:
+                # Obtain (i, j) pairs where p1[i]*p2[j] > threshold
+                # len(s_idxs) can be 0
+                s_idxs, e_idxs = torch.where(is_larger==True)  # List of answer start/end idxs for one record
+                
+            batch_s_idxs.append(s_idxs.tolist())  # list 
+            batch_e_idxs.append(e_idxs.tolist())  # list: element is list of ans idxs
+        return batch_s_idxs, batch_e_idxs
+       
+    else:
+        # Obtain top [num_answer] (i, j) pairs which maximize p_join
+        _, flat_idxs = torch.topk(torch.flatten(p_join, start_dim=1), num_answer)  # [batch_size, num_answer]
+        
+        s_idxs, e_idxs = [], []
+        for fidx in flat_idxs:
+            idxs = torch.tensor(np.unravel_index(fidx.numpy(), p_join.shape[1:]))  # [2, num_answer]
+            s_idxs.append(idxs[0])  # idxs[0]: [num_answer]
+            e_idxs.append(idxs[1])  # idxs[1]: [num_answer]
+            
+        s_idxs = torch.stack(s_idxs)    # tensor, [batch_size, num_answer]
+        e_idxs = torch.stack(e_idxs)    # tensor, [batch_size, num_answer]           
+        return s_idxs, e_idxs
 
 
 #%%
