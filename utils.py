@@ -105,9 +105,10 @@ def get_ans_list_idx(p_s, p_e, max_len=15, threshold=None, num_answer=1):
         
     Returns:
         s_idxs, e_idxs (batch answer idxs)
-        When threshold is None: s_idxs/e_idxs are tensors, [batch_size, num_answer]
-        Else: s_idxs/e_idxs are lists, element is list of ans idxs
-        
+        When threshold is None 
+            -->> s_idxs, e_idxs, top_probs: tensors, [batch_size, num_answer]
+        Else 
+            -->> s_idxs, e_idxs: lists, element is list of ans idxs   
     """
     c_len = p_s.shape[1]
     device = p_s.device
@@ -135,20 +136,20 @@ def get_ans_list_idx(p_s, p_e, max_len=15, threshold=None, num_answer=1):
                 # Obtain top [num_answer] (i, j) pairs where p1[i]*p2[j] > threshold
                 _, flat_idxs = torch.topk(torch.flatten(p, start_dim=0), num_answer)  # [num_answer]
                 idxs = torch.tensor(np.unravel_index(flat_idxs.numpy(), p.shape))  # [2, num_answer]
-                s_idxs, e_idxs = idxs[0], idxs[1]
-            
+                s_idxs, e_idxs = idxs[0], idxs[1]            
             else:
                 # Obtain (i, j) pairs where p1[i]*p2[j] > threshold
-                # len(s_idxs) can be 0
+                # len(s_idxs) = 0 when torch.sum(is_larger) = 0
                 s_idxs, e_idxs = torch.where(is_larger==True)  # List of answer start/end idxs for one record
                 
-            batch_s_idxs.append(s_idxs.tolist())  # list 
-            batch_e_idxs.append(e_idxs.tolist())  # list: element is list of ans idxs
-        return batch_s_idxs, batch_e_idxs
+            batch_s_idxs.append(s_idxs.tolist()) 
+            batch_e_idxs.append(e_idxs.tolist())  
+            
+        return batch_s_idxs, batch_e_idxs  # list: element is list of ans idxs
        
     else:
         # Obtain top [num_answer] (i, j) pairs which maximize p_join
-        _, flat_idxs = torch.topk(torch.flatten(p_join, start_dim=1), num_answer)  # [batch_size, num_answer]
+        top_probs, flat_idxs = torch.topk(torch.flatten(p_join, start_dim=1), num_answer)  # [batch_size, num_answer]
         
         s_idxs, e_idxs = [], []
         for fidx in flat_idxs:
@@ -156,9 +157,9 @@ def get_ans_list_idx(p_s, p_e, max_len=15, threshold=None, num_answer=1):
             s_idxs.append(idxs[0])  # idxs[0]: [num_answer]
             e_idxs.append(idxs[1])  # idxs[1]: [num_answer]
             
-        s_idxs = torch.stack(s_idxs)    # tensor, [batch_size, num_answer]
-        e_idxs = torch.stack(e_idxs)    # tensor, [batch_size, num_answer]           
-        return s_idxs, e_idxs
+        s_idxs = torch.stack(s_idxs)    
+        e_idxs = torch.stack(e_idxs)            
+        return s_idxs, e_idxs, top_probs  # tensor, [batch_size, num_answer]
 
 
 #%%
@@ -186,6 +187,32 @@ def metric_f1_pr(pred_tokens, true_tokens):
     else:
         f1 = 0
     return f1, precision, recall
+
+
+
+def metric_ave_fpr(pred_token_list, true_token_list):
+    """
+    Compute mean f1/precision/recall for list-type questions (one record with multiple answers)
+        pred_token_list: [["ab", "ef"], ["cd"]]
+        true_token_list: [["ab", "ef"], ["cd"], ["fg", "b"], ...]
+        
+    """
+    plist, rlist = [], []
+    for pred_tokens in pred_token_list:
+        for true_tokens in true_token_list:
+            _, precision, recall = metric_f1_pr(pred_tokens, true_tokens)
+            plist.append(precision)
+            rlist.append(recall)
+    
+    ave_p = sum(plist) / len(plist)
+    ave_r = sum(rlist) / len(rlist)
+    if ave_p + ave_r != 0:
+        ave_f1 = (2 * ave_p * ave_r) / (ave_p + ave_r)
+    else:
+        ave_f1 = 0
+        
+    return ave_f1, ave_p, ave_r
+
 
 
 def metric_rr(pred_tokens_list, true_tokens):
