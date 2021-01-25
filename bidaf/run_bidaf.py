@@ -24,7 +24,7 @@ import helper.helper_mnd as helper_mnd
 
 from bidaf.data_loader import BaselineIterators
 from bidaf.model import BiDAF
-from bidaf.train import train_fn, valid_fn
+from bidaf.train import train_fn, valid_fn, train_fn_list, valid_fn_list
 
 
 #%% Get arguments from command line
@@ -52,10 +52,10 @@ else:
 # args.data_path = "/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-20s-02112020.json"
 
 BaseIter = BaselineIterators(vars(args))
-# if os.path.basename(args.data_path).split('-')[0] == 'PsyCIPN':
-#     BaseIter.process_data(process_fn = helper_psci.process_for_baseline)
-# if os.path.basename(args.data_path).split('-')[0] == 'MND':
-#     BaseIter.process_data(process_fn = helper_mnd.process_for_baseline)
+if os.path.basename(args.data_path).split('-')[0] == 'PsyCIPN':
+    BaseIter.process_data(process_fn = helper_psci.process_for_baseline, model='bidaf')
+if os.path.basename(args.data_path).split('-')[0] == 'MND':
+    BaseIter.process_data(process_fn = helper_mnd.process_for_baseline, model='bidaf')
     
 train_data, valid_data, test_data = BaseIter.create_data()
 train_iter, valid_iter, test_iter = BaseIter.create_iterators(train_data, valid_data, test_data)
@@ -112,9 +112,13 @@ n_worse = 0
 min_valid_loss = float('inf')
 max_valid_f1 = float('-inf')
 
-for epoch in range(args.num_epochs):   
-    train_scores = train_fn(model, BaseIter, train_iter, optimizer, scheduler, args.clip, args.accum_step)
-    valid_scores = valid_fn(model, BaseIter, valid_iter)        
+for epoch in range(args.num_epochs): 
+    if args.type == 'factoid':
+        train_scores = train_fn(model, BaseIter, train_iter, optimizer, scheduler, args.clip, args.accum_step)
+        valid_scores = valid_fn(model, BaseIter, valid_iter)  
+    else:
+        train_scores = train_fn_list(model, BaseIter, train_iter, optimizer, scheduler, args.clip, args.accum_step, args.num_answer, args.ans_thres)
+        valid_scores = valid_fn_list(model, BaseIter, valid_iter, args.num_answer, args.ans_thres)  
 
     # Update output dictionary
     output_dict['prfs'][str('train_'+str(epoch+1))] = train_scores
