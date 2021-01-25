@@ -24,7 +24,7 @@ import helper.helper_psci as helper_psci
 import helper.helper_mnd as helper_mnd
 
 from bidaf.data_loader import BaselineIterators
-from bidaf.train import train_fn, valid_fn
+from bidaf.train import train_fn, valid_fn, train_fn_list, valid_fn_list
 
 from qanet.model import QANet
 
@@ -33,6 +33,8 @@ args = get_args()
 MAX_CLEN = 512
 MAX_QLEN = 10
 NUM_BLOCKS_MOD = 2
+NUM_ANSWER = 5
+ANS_THRES = 0.1
 
 #%% Set random seed and device
 random.seed(args.seed)
@@ -118,9 +120,22 @@ n_worse = 0
 min_valid_loss = float('inf')
 max_valid_f1 = float('-inf')
 
-for epoch in range(args.num_epochs):   
-    train_scores = train_fn(model, BaseIter, train_iter, optimizer, scheduler, args.clip, args.accum_step)
-    valid_scores = valid_fn(model, BaseIter, valid_iter)        
+for epoch in range(args.num_epochs): 
+    print("\n\nEpoch {}/{}...".format(epoch+1, args.num_epochs))
+    if args.type == 'factoid':
+        train_scores = train_fn(model, BaseIter, train_iter, optimizer, scheduler, args.clip, args.accum_step)
+        valid_scores = valid_fn(model, BaseIter, valid_iter)  
+        print('[Train] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}% | prec: {3:.2f}% | rec: {4:.2f}%'.format(
+            train_scores['loss'], train_scores['em']*100, train_scores['f1']*100, train_scores['prec']*100, train_scores['rec']*100))
+        print('[Valid] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}% | prec: {3:.2f}% | rec: {4:.2f}%\n'.format(
+            valid_scores['loss'], valid_scores['em']*100, valid_scores['f1']*100, valid_scores['prec']*100, valid_scores['rec']*100))
+    else:
+        train_scores = train_fn_list(model, BaseIter, train_iter, optimizer, scheduler, args.clip, args.accum_step, NUM_ANSWER, ANS_THRES)
+        valid_scores = valid_fn_list(model, BaseIter, valid_iter, NUM_ANSWER, ANS_THRES) 
+        print('[Train] loss: {0:.3f} | f1: {1:.2f}% | prec: {2:.2f}% | rec: {3:.2f}%'.format(
+            train_scores['loss'], train_scores['f1']*100, train_scores['prec']*100, train_scores['rec']*100))
+        print('[Valid] loss: {0:.3f} | f1: {1:.2f}% | prec: {2:.2f}% | rec: {3:.2f}%\n'.format(
+            valid_scores['loss'], valid_scores['f1']*100, valid_scores['prec']*100, valid_scores['rec']*100))    
 
     # Update output dictionary
     output_dict['prfs'][str('train_'+str(epoch+1))] = train_scores
@@ -141,13 +156,7 @@ for epoch in range(args.num_epochs):
                                'state_dict': model.state_dict(),
                                'optim_Dict': optimizer.state_dict()},
                                is_best = is_best, checkdir = args.exp_dir)
-    
-    print("\n\nEpoch {}/{}...".format(epoch+1, args.num_epochs))
-    print('[Train] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}% | prec: {3:.2f}% | rec: {4:.2f}%'.format(
-        train_scores['loss'], train_scores['em']*100, train_scores['f1']*100, train_scores['prec']*100, train_scores['rec']*100))
-    print('[Valid] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}% | prec: {3:.2f}% | rec: {4:.2f}%\n'.format(
-        valid_scores['loss'], valid_scores['em']*100, valid_scores['f1']*100, valid_scores['prec']*100, valid_scores['rec']*100))
-    
+
     # Early stopping             
     # if valid_scores['loss']-min_valid_loss > 0: # args.stop_c1) and (max_valid_f1-valid_scores['f1'] > args.stop_c2):
     #     n_worse += 1
