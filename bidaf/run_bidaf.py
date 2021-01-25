@@ -113,12 +113,22 @@ min_valid_loss = float('inf')
 max_valid_f1 = float('-inf')
 
 for epoch in range(args.num_epochs): 
+    print("\n\nEpoch {}/{}...".format(epoch+1, args.num_epochs))
     if args.type == 'factoid':
         train_scores = train_fn(model, BaseIter, train_iter, optimizer, scheduler, args.clip, args.accum_step)
         valid_scores = valid_fn(model, BaseIter, valid_iter)  
+        print('[Train] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}% | prec: {3:.2f}% | rec: {4:.2f}%'.format(
+            train_scores['loss'], train_scores['em']*100, train_scores['f1']*100, train_scores['prec']*100, train_scores['rec']*100))
+        print('[Valid] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}% | prec: {3:.2f}% | rec: {4:.2f}%\n'.format(
+            valid_scores['loss'], valid_scores['em']*100, valid_scores['f1']*100, valid_scores['prec']*100, valid_scores['rec']*100))
     else:
         train_scores = train_fn_list(model, BaseIter, train_iter, optimizer, scheduler, args.clip, args.accum_step, args.num_answer, args.ans_thres)
-        valid_scores = valid_fn_list(model, BaseIter, valid_iter, args.num_answer, args.ans_thres)  
+        valid_scores = valid_fn_list(model, BaseIter, valid_iter, args.num_answer, args.ans_thres) 
+        print('[Train] loss: {0:.3f} | f1: {1:.2f}% | prec: {2:.2f}% | rec: {3:.2f}%'.format(
+            train_scores['loss'], train_scores['f1']*100, train_scores['prec']*100, train_scores['rec']*100))
+        print('[Valid] loss: {0:.3f} | f1: {1:.2f}% | prec: {2:.2f}% | rec: {3:.2f}%\n'.format(
+            valid_scores['loss'], valid_scores['f1']*100, valid_scores['prec']*100, valid_scores['rec']*100))
+        
 
     # Update output dictionary
     output_dict['prfs'][str('train_'+str(epoch+1))] = train_scores
@@ -139,12 +149,6 @@ for epoch in range(args.num_epochs):
                                'state_dict': model.state_dict(),
                                'optim_Dict': optimizer.state_dict()},
                                is_best = is_best, checkdir = args.exp_dir)
-    
-    print("\n\nEpoch {}/{}...".format(epoch+1, args.num_epochs))
-    print('[Train] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}% | prec: {3:.2f}% | rec: {4:.2f}%'.format(
-        train_scores['loss'], train_scores['em']*100, train_scores['f1']*100, train_scores['prec']*100, train_scores['rec']*100))
-    print('[Valid] loss: {0:.3f} | em: {1:.2f}% | f1: {2:.2f}% | prec: {3:.2f}% | rec: {4:.2f}%\n'.format(
-        valid_scores['loss'], valid_scores['em']*100, valid_scores['f1']*100, valid_scores['prec']*100, valid_scores['rec']*100))
     
     # Early stopping             
     # if valid_scores['loss']-min_valid_loss > 0: # args.stop_c1) and (max_valid_f1-valid_scores['f1'] > args.stop_c2):
