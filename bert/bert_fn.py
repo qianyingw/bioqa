@@ -60,7 +60,7 @@ def char2token_encodings(contexts, questions, answers, tokenizer, truncation, ma
     token_starts, token_ends = [], []
     for i in range(len(contexts)):
         # Convert character positions to token positions
-        if answers[i]['answer_start'] == -999:  
+        if (answers[i]['answer_start'] == -999) or (answers[i]['answer_start'] >= max_len):  
         # -999 --> answer not found in the 'new context' generated from most [max_n_sent] similar sents (for psycipn data)
             token_starts.append(-999)
             token_ends.append(-999)
