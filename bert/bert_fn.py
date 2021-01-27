@@ -13,7 +13,7 @@ import itertools
 import torch
 import torch.nn as nn
 
-import bioqa.utils as utils
+import utils as utils
 
 import transformers
 
