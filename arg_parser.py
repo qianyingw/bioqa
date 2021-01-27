@@ -32,6 +32,7 @@ def get_args():
     parser.add_argument('--num_epochs', nargs="?", type=int, default=20, help='Number of epochs')    
     parser.add_argument('--args_json_path', nargs="?", type=str, default=None, help='Path of argument json file') 
     parser.add_argument('--exp_dir', nargs="?", type=str, default="/home/qwang/bioqa/exps", help='Folder of the experiment')
+    parser.add_argument('--lr', nargs="?", type=float, default=1e-3, help='Learning rate')
     parser.add_argument('--clip', nargs="?", type=float, default=0.1, help='Gradient clipping')
     parser.add_argument('--accum_step', nargs="?", type=int, default=4, help='Number of steps for gradient accumulation')
     parser.add_argument('--warm_frac', nargs="?", type=float, default=0.1, help='Fraction of iterations when lr increased')
