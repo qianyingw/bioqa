@@ -17,6 +17,10 @@ from transformers import AdamW, get_linear_schedule_with_warmup
 import torch
 from torch.utils.data import DataLoader
 
+print(os.getcwd())
+import sys
+print(sys.path)
+
 from bioqa.arg_parser import get_args
 import bioqa.utils
 from bioqa.bert.bert_fn import read_data, char2token_encodings, EncodingDataset
