@@ -9,7 +9,8 @@ Created on Wed Aug 26 15:26:38 2020
 import json
 import os
 # os.chdir('/home/qwang/bioqa')
-# os.chdir("..")
+import sys
+sys.path.insert(0,'..')
 import random
 
 from transformers import BertTokenizerFast, BertForQuestionAnswering
@@ -20,10 +21,11 @@ from transformers import AdamW, get_linear_schedule_with_warmup
 import torch
 from torch.utils.data import DataLoader
 
-from arg_parser import get_args
-import utils
-from bert.bert_fn import read_data, char2token_encodings, EncodingDataset
-from bert.bert_fn import train_fn, valid_fn, train_fn_list, valid_fn_list
+
+from bioqa.arg_parser import get_args
+import bioqa.utils
+from bioqa.bert.bert_fn import read_data, char2token_encodings, EncodingDataset
+from bioqa.bert.bert_fn import train_fn, valid_fn, train_fn_list, valid_fn_list
 
 #%% Read data
 args = get_args()
