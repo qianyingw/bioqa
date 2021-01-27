@@ -9,7 +9,7 @@ Created on Wed Aug 26 15:26:38 2020
 import json
 import os
 # os.chdir('/home/qwang/bioqa')
-os.chdir("..")
+# os.chdir("..")
 import random
 
 from transformers import BertTokenizerFast, BertForQuestionAnswering
