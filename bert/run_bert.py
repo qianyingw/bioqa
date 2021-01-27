@@ -8,19 +8,14 @@ Created on Wed Aug 26 15:26:38 2020
 
 import json
 import os
-# os.chdir('/home/qwang/bioqa')
-import sys
-sys.path.insert(0,'..')
 import random
 
 from transformers import BertTokenizerFast, BertForQuestionAnswering
 from transformers import DistilBertTokenizerFast, DistilBertForQuestionAnswering #, DistilBertTokenizer
 from transformers import AdamW, get_linear_schedule_with_warmup
 
-
 import torch
 from torch.utils.data import DataLoader
-
 
 from bioqa.arg_parser import get_args
 import bioqa.utils
