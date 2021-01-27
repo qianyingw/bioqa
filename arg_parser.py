@@ -31,7 +31,7 @@ def get_args():
     parser.add_argument('--batch_size', nargs="?", type=int, default=32, help='Batch size')
     parser.add_argument('--num_epochs', nargs="?", type=int, default=20, help='Number of epochs')    
     parser.add_argument('--args_json_path', nargs="?", type=str, default=None, help='Path of argument json file') 
-    parser.add_argument('--exp_dir', nargs="?", type=str, default="/home/qwang/bioqa/exps/pci/distil", help='Folder of the experiment')
+    parser.add_argument('--exp_dir', nargs="?", type=str, default="/home/qwang/bioqa/exps", help='Folder of the experiment')
     parser.add_argument('--clip', nargs="?", type=float, default=0.1, help='Gradient clipping')
     parser.add_argument('--accum_step', nargs="?", type=int, default=4, help='Number of steps for gradient accumulation')
     parser.add_argument('--warm_frac', nargs="?", type=float, default=0.1, help='Fraction of iterations when lr increased')
@@ -39,10 +39,11 @@ def get_args():
        
     # Data and embedding
     parser.add_argument('--data_path', nargs="?", type=str,
-                        default="/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-20s-02112020.json",
-                        # default="/media/mynewdrive/bioqa/mnd/intervention/MND-Intervention-1983-06Aug20.json", 
-                        help='Path of json data')
-    parser.add_argument('--pre_wgts', nargs="?", type=str, default="distil", 
+                        # default="/media/mynewdrive/bioqa/PsyCIPN-II-1984-30s-20012021.json",
+                        # default="/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-20s-02112020.json",
+                        default="/media/mynewdrive/bioqa/mnd/intervention/MND-Intervention-1983-06Aug20.json", 
+                        help='Path of json data')        
+    parser.add_argument('--pre_wgts', nargs="?", type=str, default="pubmed-abs", 
                         choices=['distil', 'bert', 'biobert', 'pubmed-full', 'pubmed-abs'],
                         help='Pre-trained model name')
     parser.add_argument('--embed_path', nargs="?", type=str, default="/media/mynewdrive/rob/wordvec/wikipedia-pubmed-and-PMC-w2v.txt", help='Path of pre-trained vectors')    
@@ -50,11 +51,15 @@ def get_args():
     parser.add_argument('--max_vocab_size', nargs="?", type=int, default=30000, help='Maximum size of the vocabulary')
     parser.add_argument('--min_occur_freq', nargs="?", type=int, default=0, help='Minimum frequency of including a token in the vocabulary')
     
-      
+    # List-type question
+    parser.add_argument('--type', nargs="?", type=str, default="factoid", choices=['factoid', 'list'], help='QA type')
+    parser.add_argument('--num_answer', nargs="?", type=int, default=5, help='Number of returned candidate answer')
+    parser.add_argument('--ans_thres', nargs="?", type=float, default=0.2, help='Threshold for list-type questions')
+    
     # Model
-    parser.add_argument('--hidden_dim', nargs="?", type=int, default=64, help='Number of features in RNN hidden state')
-    parser.add_argument('--num_layers', nargs="?", type=int, default=2, help='Number of recurrent layers')
-    parser.add_argument('--dropout', nargs="?", type=float, default=0.5, help='Dropout rate')
+    parser.add_argument('--hidden_dim', nargs="?", type=int, default=256, help='Number of features in RNN hidden state')
+    parser.add_argument('--num_layers', nargs="?", type=int, default=1, help='Number of recurrent layers')
+    parser.add_argument('--dropout', nargs="?", type=float, default=0.1, help='Dropout rate')
 
    
     args = parser.parse_args()    

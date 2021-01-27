@@ -8,7 +8,8 @@ Created on Wed Aug 26 15:26:38 2020
 
 import json
 import os
-os.chdir('/home/qwang/bioqa')
+# os.chdir('/home/qwang/bioqa')
+os.chdir("..")
 import random
 
 from transformers import BertTokenizerFast, BertForQuestionAnswering
@@ -50,10 +51,6 @@ if os.path.basename(args.data_path).split('-')[0] == 'PsyCIPN':
             dat_valid.append(ls)
         else:
             dat_test.append(ls)
-            
-    ############## For debug only
-    dat_train, dat_valid = dat_train[:100], dat_valid[:10]
-    ##############    
     train_contexts, train_questions, train_answers, train_pids = read_data(dat_train) 
     valid_contexts, valid_questions, valid_answers, valid_pids = read_data(dat_valid) 
 else:
@@ -107,7 +104,7 @@ else: # args.pre_wgts == 'bert-base'
     model = BertForQuestionAnswering.from_pretrained('/media/mynewdrive/rob/data/pre_wgts/bert_base')   
     
 model.to(device)
-optimizer = AdamW(model.parameters(), lr=2e-5)
+optimizer = AdamW(model.parameters(), lr=args.lr)
 
 # Slanted triangular Learning rate scheduler
 total_steps = len(train_loader) * args.num_epochs // args.accum_step
