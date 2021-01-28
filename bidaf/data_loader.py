@@ -48,7 +48,7 @@ class BaselineIterators(object):
         self.POSITION = data.RawField()     
         
     def process_data(self, process_fn, model='bidaf', max_clen=None, max_qlen=None):
-
+        
         with open(self.args['data_path']) as fin:
             dat = json.load(fin)
         data_dir = os.path.dirname(self.args['data_path'])
@@ -99,11 +99,13 @@ class BaselineIterators(object):
         # If a Field is shared between two columns in a dataset (e.g., question/answer in a QA dataset), 
         # then they will have a shared vocabulary.
         fields = {'id': ('id', self.ID), 
-                  'pubId': ('pid', self.PID), 
                   'ques_tokens': ('question', self.TEXT), 
                   'context_tokens': ('context', self.TEXT),
                   'y1s': ('y1s', self.POSITION),
                   'y2s': ('y2s', self.POSITION)}
+        # PsyCIPN data
+        if os.path.basename(self.args['data_path']).split('-')[0] == 'PsyCIPN':
+            fields['pubId'] = ('pid', self.PID)            
         
         dir_path = os.path.dirname(self.args['data_path'])
         assert os.path.exists(dir_path), "Path not exist!"     
