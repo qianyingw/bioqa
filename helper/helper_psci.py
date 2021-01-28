@@ -100,24 +100,23 @@ def add_ans_char_pos(data_list, max_n_sent):
     return new_list
 
 #%%
-with open('/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-796-factoid-30102020.json') as fin:
-    dat = json.load(fin)   
-    
-dat_new = add_ans_char_pos(dat, max_n_sent=20)  # 33mins
-with open("/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-20s-02112020.json", 'w') as fout:
-    fout.write(json.dumps(dat_new))
-    
-    
-# All 1225 records
-with open('/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-1225-30102020.json') as fin:
-    dat = json.load(fin)   
+# with open('/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-796-factoid-30102020.json') as fin:
+#     dat = json.load(fin)   
+# dat_new = add_ans_char_pos(dat, max_n_sent=20)  # 40mins
+# with open("/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-20s-02112020.json", 'w') as fout:
+#     fout.write(json.dumps(dat_new))
+       
+# dat_new = add_ans_char_pos(dat, max_n_sent=60)  # 40mins
+# with open("/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-60s-02112020.json", 'w') as fout:
+#     fout.write(json.dumps(dat_new))
+ 
 
-start = time.time()
-dat_new = add_ans_char_pos(dat, max_n_sent=30)
-print("Time elapsed: {} mins".format((time.time()-start)/60))  
-  
-with open("/media/mynewdrive/bioqa/PsyCIPN-II-1225-30s-20012021.json", 'w') as fout:
-    fout.write(json.dumps(dat_new))
+# # Split 1225 records to 1984 records for list-type questions
+# with open('/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-1225-30102020.json') as fin:
+#     dat = json.load(fin)   
+# dat_new = add_ans_char_pos(dat, max_n_sent=30)  # 1hr
+# with open("/media/mynewdrive/bioqa/PsyCIPN-II-1984-30s-20012021.json", 'w') as fout:
+#     fout.write(json.dumps(dat_new))
 
 #%% For torchtext iterators (baseline models)
 def convert_idx(text, tokens):
