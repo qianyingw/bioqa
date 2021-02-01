@@ -159,7 +159,7 @@ def get_ans_list_idx(p_s, p_e, max_len=15, threshold=None, num_answer=1):
             
         s_idxs = torch.stack(s_idxs)    
         e_idxs = torch.stack(e_idxs)            
-        return s_idxs, e_idxs, top_probs  # tensor, [batch_size, num_answer]
+        return s_idxs, e_idxs, torch.sqrt(top_probs)  # tensor, [batch_size, num_answer]
 
 
 #%%
