@@ -91,7 +91,9 @@ class PsyCIPNDataset():
         ###### bigram-tfidf similarity ######
         if self.method == 'tfidf':
             sents_ques = sents + [ques_new]
-            vectorizer = CountVectorizer(ngram_range=(1,2), tokenizer=spacy_tokenizer, min_df=1)
+            # vectorizer = CountVectorizer(ngram_range=(1,2), tokenizer=spacy_tokenizer, min_df=1)
+            vectorizer = CountVectorizer(ngram_range=(1,1), tokenizer=spacy_tokenizer, min_df=1)
+            # vectorizer = CountVectorizer(ngram_range=(2,2), tokenizer=spacy_tokenizer, min_df=1)
             sents_ques_vec = tfidf_transformer.fit_transform(vectorizer.fit_transform(sents_ques)).toarray()
             
             sents_vec = torch.from_numpy(sents_ques_vec[:-1]).float()
@@ -203,7 +205,7 @@ json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-1225-30102020.json'
 
 import time
 start = time.time()
-PC = PsyCIPNDataset(json_path, max_n_sent=60, method='bm25')
+PC = PsyCIPNDataset(json_path, max_n_sent=10, method='tfidf')
 sMAP, rMAP, lMAP, sMMR, MMR = 0, 0, 0, 0, 0
 for i in range(len(PC)):
     ans_ls, sent_ls = PC[i][0], PC[i][1]
