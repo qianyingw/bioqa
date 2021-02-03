@@ -11,8 +11,7 @@ import re
 # from helper.text_helper import text2tokens
 
 import torch
-from sentence_transformers import SentenceTransformer, util
-model = SentenceTransformer('distilbert-base-nli-stsb-mean-tokens')
+from sentence_transformers import SentenceTransformer, models, util
 
 from gensim.summarization.bm25 import BM25
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
@@ -34,7 +33,7 @@ def spacy_tokenizer(text):
 #%%
 class PsyCIPNDataset():
     
-    def __init__(self, json_path, max_n_sent, method):
+    def __init__(self, json_path, max_n_sent, method, wgts=None):
         
         with open(json_path) as fin:
             dat = json.load(fin)
@@ -44,7 +43,27 @@ class PsyCIPNDataset():
         
         self.dat = dat
         self.max_n_sent = max_n_sent
-        self.method = method
+        self.method = method        
+            
+        if wgts == 'base':
+            word_embedding_model = models.Transformer('bert-base-uncased', max_seq_length=512)
+        if wgts == 'bio':
+            word_embedding_model = models.Transformer('dmis-lab/biobert-v1.1', max_seq_length=512)
+        if wgts == 'abs':
+            word_embedding_model = models.Transformer('microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract', max_seq_length=512)
+        if wgts == 'full':
+            word_embedding_model = models.Transformer('microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext', max_seq_length=512)
+        
+        if word_embedding_model:
+            pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension())         
+            model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
+        else:
+            if wgts == 'marco':
+                model = SentenceTransformer('msmarco-distilroberta-base-v2') 
+            else:
+                model = SentenceTransformer('distilbert-base-nli-stsb-mean-tokens') 
+            
+        self.model = model
     
     def __len__(self):
         return len(self.dat)
@@ -67,8 +86,8 @@ class PsyCIPNDataset():
         ###### sentence-bert similarity ######
         if self.method == 'sbert':
             
-            sent_embeds = model.encode(sents, convert_to_tensor=True)
-            ques_embed = model.encode([ques_new], convert_to_tensor=True)
+            sent_embeds = self.model.encode(sents, convert_to_tensor=True)
+            ques_embed = self.model.encode([ques_new], convert_to_tensor=True)
     
             # Compute cosine-similarities for each sent with other sents
             cosine_scores = util.pytorch_cos_sim(sent_embeds, ques_embed)
@@ -205,7 +224,7 @@ json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-1225-30102020.json'
 
 import time
 start = time.time()
-PC = PsyCIPNDataset(json_path, max_n_sent=10, method='tfidf')
+PC = PsyCIPNDataset(json_path, max_n_sent=30, method='sbert', wgts='base')
 sMAP, rMAP, lMAP, sMMR, MMR = 0, 0, 0, 0, 0
 for i in range(len(PC)):
     ans_ls, sent_ls = PC[i][0], PC[i][1]
@@ -218,19 +237,34 @@ for i in range(len(PC)):
     MR = compute_match_ratio(ans_ls, sent_ls)
     sMMR += MR[0]
     MMR += MR[1]
-    print(i)
+    # print(i)
     
 print("sMAP|rMAP|lMAP|sMMR|MMR: |{0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}|{4:.2f}".format(
     sMAP/len(PC)*100, rMAP/len(PC)*100, lMAP/len(PC)*100, sMMR/len(PC)*100, MMR/len(PC)*100))
 print("Time elapsed: {} mins".format((time.time()-start)/60))  
 
 #%%
+json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-1225-30102020.json'
 # json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-796-factoid-30102020.json'
-# print("============ sbert ============")  
-# PC = PsyCIPNDataset(json_path, max_n_sent=25, method='sbert')
-# mAPs, mAP, mMRs, mMR = 0, 0, 0, 0
-# for i in range(len(PC)):
-#     ans_ls, sent_ls = PC[i][0], PC[i][1]
-#     mAPs += compute_ave_precision(ans_ls, sent_ls, strict=True) 
-#     mMRs += compute_match_ratio(ans_ls, sent_ls, strict=True)
-# print("[sMAP|sMMR]-sbert-25: |{0:.2f}|{1:.2f}".format(mAPs/len(PC)*100, mMRs/len(PC)*100))
+# json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-429-list-30102020.json'
+
+import time
+start = time.time()
+PC = PsyCIPNDataset(json_path, max_n_sent=30, method='sbert', wgts='bio')
+sMAP, rMAP, lMAP, sMMR, MMR = 0, 0, 0, 0, 0
+for i in range(len(PC)):
+    ans_ls, sent_ls = PC[i][0], PC[i][1]
+    
+    AP = compute_ave_precision(ans_ls, sent_ls)
+    sMAP += AP[0]
+    rMAP += AP[1]
+    lMAP += AP[2]
+    
+    MR = compute_match_ratio(ans_ls, sent_ls)
+    sMMR += MR[0]
+    MMR += MR[1]
+    # print(i)
+    
+print("sMAP|rMAP|lMAP|sMMR|MMR: |{0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}|{4:.2f}".format(
+    sMAP/len(PC)*100, rMAP/len(PC)*100, lMAP/len(PC)*100, sMMR/len(PC)*100, MMR/len(PC)*100))
+print("Time elapsed: {} mins".format((time.time()-start)/60))  
