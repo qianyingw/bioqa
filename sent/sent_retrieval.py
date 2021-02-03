@@ -59,7 +59,7 @@ class PsyCIPNDataset():
             model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
         else:
             if wgts == 'marco':
-                model = SentenceTransformer('msmarco-distilroberta-base-v2') 
+                model = SentenceTransformer('msmarco-distilbert-base-v2') 
             else:
                 model = SentenceTransformer('distilbert-base-nli-stsb-mean-tokens') 
             
@@ -224,7 +224,7 @@ json_path = '/media/mynewdrive/bioqa/PsyCIPN-InduceIntervene-1225-30102020.json'
 
 import time
 start = time.time()
-PC = PsyCIPNDataset(json_path, max_n_sent=30, method='sbert', wgts='base')
+PC = PsyCIPNDataset(json_path, max_n_sent=30, method='sbert', wgts='marco')
 sMAP, rMAP, lMAP, sMMR, MMR = 0, 0, 0, 0, 0
 for i in range(len(PC)):
     ans_ls, sent_ls = PC[i][0], PC[i][1]
