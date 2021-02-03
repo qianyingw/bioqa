@@ -33,7 +33,7 @@ def spacy_tokenizer(text):
 #%%
 class PsyCIPNDataset():
     
-    def __init__(self, json_path, max_n_sent, method, wgts=None):
+    def __init__(self, json_path, max_n_sent, method, wgts='distil'):
         
         with open(json_path) as fin:
             dat = json.load(fin)
@@ -44,6 +44,11 @@ class PsyCIPNDataset():
         self.dat = dat
         self.max_n_sent = max_n_sent
         self.method = method        
+        
+        if wgts == 'distil':
+            model = SentenceTransformer('distilbert-base-nli-stsb-mean-tokens')                 
+        if wgts == 'marco':
+            model = SentenceTransformer('msmarco-distilbert-base-v2') 
             
         if wgts == 'base':
             word_embedding_model = models.Transformer('bert-base-uncased', max_seq_length=512)
@@ -54,14 +59,9 @@ class PsyCIPNDataset():
         if wgts == 'full':
             word_embedding_model = models.Transformer('microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext', max_seq_length=512)
         
-        if word_embedding_model:
+        if wgts in ['base', 'bio', 'abs', 'full']:
             pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension())         
             model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
-        else:
-            if wgts == 'marco':
-                model = SentenceTransformer('msmarco-distilbert-base-v2') 
-            else:
-                model = SentenceTransformer('distilbert-base-nli-stsb-mean-tokens') 
             
         self.model = model
     
@@ -237,7 +237,7 @@ for i in range(len(PC)):
     MR = compute_match_ratio(ans_ls, sent_ls)
     sMMR += MR[0]
     MMR += MR[1]
-    # print(i)
+    print(i)
     
 print("sMAP|rMAP|lMAP|sMMR|MMR: |{0:.2f}|{1:.2f}|{2:.2f}|{3:.2f}|{4:.2f}".format(
     sMAP/len(PC)*100, rMAP/len(PC)*100, lMAP/len(PC)*100, sMMR/len(PC)*100, MMR/len(PC)*100))
