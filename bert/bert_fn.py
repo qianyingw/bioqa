@@ -133,7 +133,7 @@ def train_fn(model, data_loader, optimizer, scheduler, tokenizer, clip, accum_st
             # Get start/end idxs
             p1s = utils.masked_softmax(p1s, attn_mask, dim=1, log_softmax=True)  # [batch_size, c_len]
             p2s = utils.masked_softmax(p2s, attn_mask, dim=1, log_softmax=True)  # [batch_size, c_len]
-            p1s, p2s = p1s.exp(), p1s.exp()
+            p1s, p2s = p1s.exp(), p2s.exp()
             s_idxs, e_idxs = utils.get_ans_idx(p1s, p2s)  # [batch_size]
             
             # ans_tokens_pred, ans_tokens_true = [], []
@@ -201,7 +201,7 @@ def valid_fn(model, data_loader, tokenizer, device):
                 mask_c = attn_mask != torch.zeros_like(attn_mask)
                 p1s = utils.masked_softmax(p1s, mask_c, dim=1, log_softmax=True)  # [batch_size, c_len]
                 p2s = utils.masked_softmax(p2s, mask_c, dim=1, log_softmax=True)  # [batch_size, c_len]
-                p1s, p2s = p1s.exp(), p1s.exp()
+                p1s, p2s = p1s.exp(), p2s.exp()
                 s_idxs, e_idxs = utils.get_ans_idx(p1s, p2s)  # [batch_size]
                 
                 ans_tokens_pred, ans_tokens_true = [], []
@@ -279,7 +279,7 @@ def train_fn_list(model, data_loader, optimizer, scheduler, tokenizer, clip, acc
             # Get start/end idxs
             p1s = utils.masked_softmax(p1s, attn_mask, dim=1, log_softmax=True)  # [batch_size, c_len]
             p2s = utils.masked_softmax(p2s, attn_mask, dim=1, log_softmax=True)  # [batch_size, c_len]
-            p1s, p2s = p1s.exp(), p1s.exp()
+            p1s, p2s = p1s.exp(), p2s.exp()
             
             # Each record has [num_answer] candidates 
             s_idxs, e_idxs, top_probs = utils.get_ans_list_idx(p1s, p2s, num_answer=num_answer)  # [batch_size, num_answer]
@@ -381,7 +381,7 @@ def valid_fn_list(model, data_loader, tokenizer, device, num_answer, ans_thres):
                 mask_c = attn_mask != torch.zeros_like(attn_mask)
                 p1s = utils.masked_softmax(p1s, mask_c, dim=1, log_softmax=True)  # [batch_size, c_len]
                 p2s = utils.masked_softmax(p2s, mask_c, dim=1, log_softmax=True)  # [batch_size, c_len]
-                p1s, p2s = p1s.exp(), p1s.exp()
+                p1s, p2s = p1s.exp(), p2s.exp()
                 
                 # Each record has [num_answer] candidates 
                 s_idxs, e_idxs, top_probs = utils.get_ans_list_idx(p1s, p2s, num_answer=num_answer)  # [batch_size, num_answer]
