@@ -7,11 +7,11 @@ Created on Wed Aug 26 15:26:38 2020
 """
 
 import json
-import os
 import random
-import sys
-sys.path[0] = sys.path[0][:-5]
-print(sys.path)
+import os
+os.chdir('/home/qwang/bioqa')
+# import sys
+# sys.path[0] = sys.path[0][:-5]
 
 from transformers import BertTokenizerFast, BertForQuestionAnswering
 from transformers import DistilBertTokenizerFast, DistilBertForQuestionAnswering #, DistilBertTokenizer
@@ -25,7 +25,7 @@ import utils
 from bert.bert_fn import read_data, char2token_encodings, EncodingDataset
 from bert.bert_fn import train_fn, valid_fn, train_fn_list, valid_fn_list
 
-#%% Read data
+#%% args
 args = get_args()
 random.seed(args.seed)
 #np.random.seed(args.seed)
@@ -35,6 +35,8 @@ torch.cuda.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = True     
 torch.backends.cudnn.benchmark = False   # will be slower  
 
+
+#%% Load data
 # data_path = "/media/mynewdrive/bioqa/mnd/intervention/MND-Intervention-1983-06Aug20.json"
 # data_path = "/media/mynewdrive/bioqa/PsyCIPN-II-796-factoid-20s-02112020.json"
 # data_path = "/media/mynewdrive/bioqa/PsyCIPN-II-1984-30s-20012021.json",
@@ -53,11 +55,13 @@ if os.path.basename(args.data_path).split('-')[0] == 'PsyCIPN':
             dat_test.append(ls)
     train_contexts, train_questions, train_answers, train_pids = read_data(dat_train) 
     valid_contexts, valid_questions, valid_answers, valid_pids = read_data(dat_valid) 
+    test_contexts, test_questions, test_answers, test_pids = read_data(dat_test) 
 else:
     # MND
     dat_train, dat_valid, dat_test = dat['train'], dat['valid'], dat['test']
     train_contexts, train_questions, train_answers = read_data(dat_train) 
-    valid_contexts, valid_questions, valid_answers = read_data(dat_valid) 
+    valid_contexts, valid_questions, valid_answers = read_data(dat_valid)
+    test_contexts, test_questions, test_answers = read_data(dat_test) 
     
     
 #%% Encodings & Dataset & DataLoader  
@@ -78,16 +82,21 @@ else: # args.pre_wgts == 'bert-base'
 
 train_encodings = char2token_encodings(train_contexts, train_questions, train_answers, tokenizer, truncation=True, max_len=512)
 valid_encodings = char2token_encodings(valid_contexts, valid_questions, valid_answers, tokenizer, truncation=True, max_len=512)
+test_encodings = char2token_encodings(test_contexts, test_questions, test_answers, tokenizer, truncation=True, max_len=512)
+
 # Add pids for list-type   
 if os.path.basename(args.data_path).split('-')[0] == 'PsyCIPN':
     train_encodings.update({'pids': train_pids})
     valid_encodings.update({'pids': valid_pids})
+    test_encodings.update({'pids': test_pids})
     
 train_dataset = EncodingDataset(train_encodings)
 valid_dataset = EncodingDataset(valid_encodings)
+test_dataset = EncodingDataset(test_encodings)
 
 train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
 
 #%% Model & Optimizer & Scheduler
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -119,9 +128,8 @@ if os.path.exists(args.exp_dir) == False:
 output_dict = {'args': vars(args), 'prfs': {}}
 
 # For early stopping
-n_worse = 0
 min_valid_loss = float('inf')
-max_valid_f1 = float('-inf')
+# max_valid_f1 = float('-inf')
 
 for epoch in range(args.num_epochs): 
     if args.type == 'factoid':
@@ -145,34 +153,34 @@ for epoch in range(args.num_epochs):
     output_dict['prfs'][str('train_'+str(epoch+1))] = train_scores
     output_dict['prfs'][str('valid_'+str(epoch+1))] = valid_scores
        
-    # Save scores
-    # if valid_scores['loss'] < min_valid_loss:
-    #     min_valid_loss = valid_scores['loss']    
-    is_best = (valid_scores['f1'] > max_valid_f1)
-    
-    if is_best == True:   
-        max_valid_f1 = valid_scores['f1'] 
-        utils.save_dict_to_json(valid_scores, os.path.join(args.exp_dir, 'best_val_scores.json'))
-    
     # Save model
+    is_best = (valid_scores['loss'] < min_valid_loss) # (valid_scores['f1'] > max_valid_f1)
+    if is_best == True:   
+        min_valid_loss = valid_scores['loss']    
+        
     if args.save_model == True:
         utils.save_checkpoint({'epoch': epoch+1,
                                'state_dict': model.state_dict(),
                                'optim_Dict': optimizer.state_dict()},
                                is_best = is_best, checkdir = args.exp_dir)
-    
-    # Early stopping             
-    # if valid_scores['loss']-min_valid_loss > 0: # args.stop_c1) and (max_valid_f1-valid_scores['f1'] > args.stop_c2):
-    #     n_worse += 1
-    # if n_worse == 5: # args.stop_p:
-    #     print("Early stopping")
-    #     break
+
         
 # Write performance and args to json
 prfs_name = os.path.basename(args.exp_dir)+'_prfs.json'
 prfs_path = os.path.join(args.exp_dir, prfs_name)
 with open(prfs_path, 'w') as fout:
     json.dump(output_dict, fout, indent=4)
+
+#%% Test
+if args.save_model:
+    pth_dir = 'bioqa/exps/psci/list/test'
+    utils.load_checkpoint(os.path.join(args.exp_dir, 'best.pth.tar'), model)
+    test_scores = valid_fn_list(model, test_loader, tokenizer, device, args.num_answer, args.ans_thres)
+    
+    save_path = os.path.join(args.exp_dir, "test_scores.json")
+    utils.save_dict_to_json(test_scores, save_path) 
+    print('[Test] loss: {0:.3f} | f1: {1:.2f}% | prec: {2:.2f}% | rec: {3:.2f}%\n'.format(
+    test_scores['loss'], test_scores['f1']*100, test_scores['prec']*100, test_scores['rec']*100)) 
 
 #%% plot
 # utils.plot_prfs(prfs_path) 
