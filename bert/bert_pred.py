@@ -11,7 +11,6 @@ os.chdir('/home/qwang/bioqa')
 import re
 import string
 
-
 import torch
 from transformers import BertTokenizerFast, BertForQuestionAnswering
 from sentence_transformers import SentenceTransformer, models, util
@@ -106,9 +105,13 @@ class AnsPred():
         '''Filter answers'''
         cand = []
         for ans in self.ans_cand:
+            # Remove CLS/SEP
             ans = ans.replace('[CLS]', '')
-            ans = ans.replace('[SEP]', '')
+            ans = ans.replace('[SEP]', '')            
             # Strip whitespaces 
+            ans = re.sub(r' - ', '-', ans)
+            ans = re.sub(r'- ', '-', ans)
+            ans = re.sub(r' -', '-', ans)
             ans = re.sub(r'\s+', " ", ans)
             ans = re.sub(r'^[\s]', "", ans)
             ans = re.sub(r'[\s]$', "", ans)
@@ -124,7 +127,7 @@ class AnsPred():
 #%%
 context = """Delta-9-THC in the treatment of spasticity associated with multiple sclerosis. Marijuana is reported to decrease spasticity in patients with multiple sclerosis. This is a double blind, placebo controlled, crossover clinical trial of delta-9-THC in 13 subjects with clinical multiple sclerosis and spasticity. Subjects received escalating doses of THC in the range of 2.5-15 mg., five days of THC and five days of placebo in randomized order, divided by a two-day washout period. Subjective ratings of spasticity and side effects were completed and semiquantitative neurological examinations were performed. At doses greater than 7.5 mg there was significant improvement in patient ratings of spasticity compared to placebo. These positive findings in a treatment failure population suggest a role for THC in the treatment of spasticity in multiple sclerosis"""
 title = None
-pth_path = '/home/qwang/bioqa/exps/abs_test/best.pth.tar'
+pth_path = '/home/qwang/bioqa/exps/psci/abs_test/best.pth.tar'
 
 
 AP = AnsPred(context, ques='intervention')
