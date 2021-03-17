@@ -27,17 +27,18 @@ def get_args():
     parser = argparse.ArgumentParser(description='RoB training and inference helper script')
  
     # Experiments
-    parser.add_argument('--seed', nargs="?", type=int, default=1234, help='Seed for random number generator')
-    parser.add_argument('--batch_size', nargs="?", type=int, default=32, help='Batch size')
-    parser.add_argument('--num_epochs', nargs="?", type=int, default=20, help='Number of epochs')    
-    parser.add_argument('--args_json_path', nargs="?", type=str, default=None, help='Path of argument json file') 
-    parser.add_argument('--exp_dir', nargs="?", type=str, default="/home/qwang/bioqa/exps", help='Folder of the experiment')
-    parser.add_argument('--lr', nargs="?", type=float, default=1e-3, help='Learning rate')
+    parser.add_argument('--seed', nargs="?", type=int, default=1234, help='Seed for random number generator')    
     parser.add_argument('--clip', nargs="?", type=float, default=0.1, help='Gradient clipping')
     parser.add_argument('--accum_step', nargs="?", type=int, default=4, help='Number of steps for gradient accumulation')
     parser.add_argument('--warm_frac', nargs="?", type=float, default=0.1, help='Fraction of iterations when lr increased')
     parser.add_argument('--save_model', nargs="?", type=str2bool, default=False, help='Save model.pth.tar with best loss')   
-       
+    parser.add_argument('--args_json_path', nargs="?", type=str, default=None, help='Path of argument json file') 
+    
+    parser.add_argument('--batch_size', nargs="?", type=int, default=32, help='Batch size')
+    parser.add_argument('--num_epochs', nargs="?", type=int, default=20, help='Number of epochs')        
+    parser.add_argument('--exp_dir', nargs="?", type=str, default="/home/qwang/bioqa/exps", help='Folder of the experiment')
+    parser.add_argument('--lr', nargs="?", type=float, default=1e-3, help='Learning rate')
+    
     # Data and embedding
     parser.add_argument('--data_path', nargs="?", type=str,
                         # default="/media/mynewdrive/bioqa/PsyCIPN-II-1984-30s-20012021.json",
@@ -62,7 +63,11 @@ def get_args():
     parser.add_argument('--num_layers', nargs="?", type=int, default=1, help='Number of recurrent layers')
     parser.add_argument('--dropout', nargs="?", type=float, default=0.1, help='Dropout rate')
 
-   
+    # QANet
+    parser.add_argument('--max_clen', nargs="?", type=int, default=512, help='Maximum content length')
+    parser.add_argument('--max_qlen', nargs="?", type=int, default=10, help='Maximum question length')
+    parser.add_argument('--num_block_mod', nargs="?", type=int, default=3, help='Number of blocks in model encoder')
+    
     args = parser.parse_args()    
     
     if args.args_json_path is None:
