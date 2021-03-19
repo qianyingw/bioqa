@@ -87,7 +87,7 @@ class AnsPred():
         p1s = utils.masked_softmax(p1s, 1-inputs['token_type_ids'], dim=1, log_softmax=True)  # [1, clen+qlen]
         p2s = utils.masked_softmax(p2s, 1-inputs['token_type_ids'], dim=1, log_softmax=True)  # [1, clen+qlen]
         p1s, p2s = p1s.exp(), p2s.exp()
-        s_idxs, e_idxs, top_probs = utils.get_ans_list_idx(p1s, p2s, num_answer=30)  # [1, num_answer]
+        s_idxs, e_idxs, top_probs = utils.get_ans_list_idx(p1s, p2s, max_len=5, num_answer=30)  # [1, num_answer]
         
         ### Get ans candidates ###
         all_tokens = tokenizer.convert_ids_to_tokens(inputs['input_ids'][0])   
@@ -124,9 +124,22 @@ class AnsPred():
 
 
 
-#%%
-context = """Delta-9-THC in the treatment of spasticity associated with multiple sclerosis. Marijuana is reported to decrease spasticity in patients with multiple sclerosis. This is a double blind, placebo controlled, crossover clinical trial of delta-9-THC in 13 subjects with clinical multiple sclerosis and spasticity. Subjects received escalating doses of THC in the range of 2.5-15 mg., five days of THC and five days of placebo in randomized order, divided by a two-day washout period. Subjective ratings of spasticity and side effects were completed and semiquantitative neurological examinations were performed. At doses greater than 7.5 mg there was significant improvement in patient ratings of spasticity compared to placebo. These positive findings in a treatment failure population suggest a role for THC in the treatment of spasticity in multiple sclerosis"""
+#%% Extract from abstract
+# PMC3288606
+context = '''The dose-limiting side-effect of taxane, platinum-complex, and other kinds of anti-cancer drugs is a chronic, distal, bilaterally symmetrical, sensory peripheral neuropathy that is often accompanied by neuropathic pain. Work with animal models of these conditions suggests that the neuropathy is a consequence of toxic effects on mitochondria in primary afferent sensory neurons. If this is true, then additional mitochondrial insult ought to make the neuropathic pain worse. This prediction was tested in rats with painful peripheral neuropathy due to the taxane agent, paclitaxel, and the platinum-complex agent, oxaliplatin. Rats with established neuropathy were given one of three mitochondrial poisons: rotenone (an inhibitor of respiratory Complex I), oligomycin (an inhibitor of ATP synthase), and auranofin (an inhibitor of the thioredoxin-thioredoxin reductase mitochondrial anti-oxidant defense system). All three toxins significantly increased the severity of paclitaxel-evoked and oxaliplatin-evoked mechano-allodynia and mechano-hyperalgesia while having no effect on the mechano-sensitivity of chemotherapy na?ve rats. Chemotherapy-evoked painful peripheral neuropathy is associated with an abnormal spontaneous discharge in primary afferent A-fibers and C-fibers. Oligomycin, at the same dose that exacerbated allodynia and hyperalgesia, significantly increased the discharge frequency of spontaneously discharging A-fibers and C-fibers in both paclitaxel-treated and oxaliplatin-treated rats, but did not evoke any discharge in na?ve control rats. These results implicate mitochondrial dysfunction in the production of chemotherapy-evoked neuropathic pain and suggest that drugs that have positive effects on mitochondrial function may be of use in its treatment and prevention.'''
 title = None
+pth_path = '/home/qwang/bioqa/exps/psci/abs_test/best.pth.tar'
+
+AP = AnsPred(context, ques='intervention')
+AP.pred_ans(pth_path)
+ans = AP.ans_filter(num_ans=5)
+print(ans)
+
+#%% Extract from full text
+# pdftotext /home/qwang/bioqa/bert/PMC3288606.pdf /home/qwang/bioqa/bert/PMC3288606.txt
+with open("bert/PMC3288606.txt", 'r', encoding='utf-8', errors='ignore') as fin:
+    context = fin.read()  
+title = "Effects of mitochondrial poisons on the neuropathic pain produced by the chemotherapeutic agents, paclitaxel and oxaliplatin."
 pth_path = '/home/qwang/bioqa/exps/psci/abs_test/best.pth.tar'
 
 
@@ -134,5 +147,5 @@ AP = AnsPred(context, ques='intervention')
 if title:
     AP.cut_text(title, max_sent=30)
 AP.pred_ans(pth_path)
-ans = AP.ans_filter(num_ans=5)
+ans = AP.ans_filter(num_ans=10)
 print(ans)
